@@ -26,7 +26,10 @@ export function Carousel({
         className={`no-scrollbar flex snap-x snap-mandatory overflow-x-auto scroll-smooth ${gapClassName}`}
       >
         {children.map((child, i) => (
-          <div key={i} className={`shrink-0 snap-start ${itemClassName}`}>
+          <div
+            key={i}
+            className={`min-w-0 shrink-0 snap-start ${itemClassName}`}
+          >
             {child}
           </div>
         ))}
