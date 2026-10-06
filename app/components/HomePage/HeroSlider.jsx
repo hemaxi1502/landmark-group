@@ -1,6 +1,7 @@
 import {useState, useEffect, useCallback} from 'react';
 import {Link} from 'react-router';
 import {Image} from '@shopify/hydrogen';
+import {toRelativeUrl} from '~/lib/home-content';
 
 /**
  * GraphQL fragment for hero slider metaobject
@@ -137,7 +138,7 @@ function extractSlideData(node) {
       '';
 
     const buttonLink =
-      getField('url', 'link', 'button_link')?.value || '';
+      toRelativeUrl(getField('url', 'link', 'button_link')?.value) || '';
 
     const sortOrderVal = getField('sort_order', 'sortOrder', 'order')?.value;
     const sortOrder =
