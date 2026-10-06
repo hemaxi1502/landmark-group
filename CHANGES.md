@@ -105,3 +105,37 @@ longer used).
 ### Not built yet
 Account pages (login, orders, addresses, profile), 404 page, blog and policy
 styling — they still use the Shopify starter layout.
+
+## Homepage editor (round 3) — `/editor`
+
+A password-protected page where the client can, without touching Shopify admin:
+- reorder homepage sections (writes `sort_order` on `home_page` entries),
+- reorder the slides / cards inside each section (Top Categories is ordered per tab),
+- change the link of every hero slide, banner and card.
+
+Files: `routes/editor.jsx`, `lib/editor-content.server.js` (reads the
+metaobject tree, validates and saves), `lib/admin-api.server.js` (Admin API
+client), `tests/editor-content.test.js`. Images and text are still edited in
+Content → Metaobjects.
+
+Links can be typed as paths (`/collections/women`). Shopify's URL field only
+stores full addresses, so the editor saves `https://<store>.myshopify.com/collections/women`
+and the storefront turns it back into a path.
+
+### Environment variables (Oxygen → Storefront settings → Environments and variables)
+| Variable | Value |
+|---|---|
+| `EDITOR_PASSWORD` | password for /editor |
+| `SHOPIFY_ADMIN_CLIENT_ID` | Client ID of a Dev Dashboard app installed on the store |
+| `SHOPIFY_ADMIN_CLIENT_SECRET` | Client secret of that app (mark as secret) |
+| `SHOPIFY_ADMIN_SHOP` | optional, e.g. `landmark-group-yk2c2n09.myshopify.com` |
+
+App scopes: `read_metaobjects`, `write_metaobjects`, `read_metaobject_definitions`, `read_files`.
+`SHOPIFY_ADMIN_API_TOKEN` can replace the client ID/secret if you already have
+an Admin API token. `SHOPIFY_ADMIN_GRAPHQL_URL` is for local testing against a mock only.
+
+### Link fix in existing components
+`HomePage/HeroSlider.jsx` and `HomePage/ShowcaseSection.jsx` used card URLs
+as stored. Most point at `landmarkgroup-store.myshopify.com` (a different
+store), so tiles sent shoppers off-site. They now go through `toRelativeUrl`,
+and Showcase banners also use the banner's own `url` field.

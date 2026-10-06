@@ -1,5 +1,6 @@
 import {Link} from 'react-router';
 import {Image} from '@shopify/hydrogen';
+import {toRelativeUrl} from '~/lib/home-content';
 
 /**
  * Lean, high-performance GraphQL fragments for showcase section metaobjects
@@ -221,6 +222,7 @@ export function parseShowcaseData(sectionNode, defaultHeading = '') {
         if (field.reference?.fields) {
           const rf = mapMetaobjectFields(field.reference.fields);
           if (rf.alt?.value) desktopAlt = rf.alt.value;
+          if (!bannerLink && rf.url?.value) bannerLink = rf.url.value;
         }
       }
     }
@@ -251,7 +253,7 @@ export function parseShowcaseData(sectionNode, defaultHeading = '') {
             handle: cardNode.handle,
             image,
             title: cFields.title?.value || cardNode.handle || '',
-            link: cFields.link?.value || cFields.url?.value || '',
+            link: toRelativeUrl(cFields.link?.value || cFields.url?.value) || '',
             sortOrder: isNaN(sortOrder) ? 0 : sortOrder,
           };
         })
@@ -274,7 +276,7 @@ export function parseShowcaseData(sectionNode, defaultHeading = '') {
             mobileImage: mobileImage || desktopImage,
             desktopAlt,
             mobileAlt: mobileAlt || desktopAlt,
-            link: bannerLink,
+            link: toRelativeUrl(bannerLink) || '',
           }
         : null,
     cards,
