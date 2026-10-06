@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+
+@keyframes stripes {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -36px 0;
+  }
+}
+/* ---------------------------------------------------------------
+ * Tokens + utilities for the homepage / PLP / PDP components
+ * (app/components/home|plp|pdp|ui). Container matches .page-width.
+ * ------------------------------------------------------------- */
+@theme {
+  --color-brand: #faa619; /* matches header accent */
+  --color-brand-dark: #e08e00;
+  --color-ink: #212121;
+  --color-muted: #798086;
+  --color-line: #e5e5e5;
+  --color-surface: #ecedeb;
+  --color-success: #1f8a4c;
+  --color-danger: #c62828;
+}
+
+@layer utilities {
+  .container-site {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 81rem;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 768px) {
+    .container-site {
+      padding-inline: 1.5rem;
+    }
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
