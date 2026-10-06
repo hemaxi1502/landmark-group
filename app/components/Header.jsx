@@ -4,6 +4,7 @@ import { useAnalytics, useOptimisticCart } from '@shopify/hydrogen';
 import { useAside } from '~/components/Aside';
 import { AnnouncementBar } from '~/components/AnnouncementBar';
 import { SearchSuggestPanel, useSearchSuggest, useGoToSearch } from '~/components/search/SearchSuggest';
+import { DesktopMegaMenu, MobileSubmenuList } from '~/components/MegaMenu';
 
 const POPULAR_SEARCHES = [
   "Melange Kurta Set Women", "watch", "tops for women",
@@ -590,22 +591,12 @@ export function HeaderMenu({
 
         <div className="flex-1 overflow-y-auto">
           {activeItem?.items?.length > 0 ? (
-            <div className="flex flex-col">
-
-              {activeItem.items.map((subItem) => (
-                <NavLink
-                  key={subItem.id}
-                  to={subItem.url}
-                  className="px-4 py-4 text-[14px] text-[#000000] border-b border-gray-100 flex justify-between items-center hover:bg-gray-50"
-                  onClick={close}
-                >
-                  {subItem.title}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-gray-400">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </NavLink>
-              ))}
-            </div>
+            <MobileSubmenuList
+              key={activeItem.id}
+              items={activeItem.items}
+              opts={{ primaryDomainUrl, publicStoreDomain }}
+              onNavigate={close}
+            />
           ) : (
              <div className="flex flex-col">
                <NavLink
@@ -645,60 +636,12 @@ export function HeaderMenu({
   }
 
   return (
-    <nav className="flex justify-center gap-10 overflow-x-auto overflow-y-hidden pt-2" role="navigation">
-      {viewport === 'mobile' && (
-        <NavLink
-          end
-          onClick={close}
-          prefetch="intent"
-          style={activeLinkStyle}
-          to="/"
-        >
-          Home
-        </NavLink>
-      )}
-      {(menu || FALLBACK_HEADER_MENU).items.map((item) => {
-        if (!item.url) return null;
-
-        // if the url is internal, we strip the domain
-        const url =
-          item.url.includes('myshopify.com') ||
-            item.url.includes(publicStoreDomain) ||
-            item.url.includes(primaryDomainUrl)
-            ? new URL(item.url).pathname
-            : item.url;
-        // Extract title and image URL using regex
-        // Pattern matches: "Text [http...]" or "Text (http...)", making closing bracket optional
-        console.log("ITEM TITLE FROM API:", item.title);
-        const match = item.title.match(/^(.*?)\s*[\[(](https?:\/\/[^\s\])]+)/);
-        const titleText = match ? match[1].trim() : item.title;
-        const imageUrl = match ? match[2] : null
-
-        return (
-          <NavLink
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-start h-auto pt-[6px] pb-[12px] group border-b-[3px] transition-colors border-transparent hover:border-[#FAA619]`
-            }
-            end
-            key={item.id}
-            onClick={close}
-            prefetch="intent"
-            to={url}
-          >
-            {({ isActive }) => (
-              <>
-                {imageUrl && (
-                  <div className={`overflow-hidden transition-all duration-300 ease-in-out flex flex-col items-center justify-end ${isScrolled ? 'h-0 mb-0 opacity-0' : 'h-[64px] mb-[10px] opacity-100'}`}>
-                    <img src={imageUrl} alt={titleText} className="w-[64px] h-[64px] mx-[12px] rounded-none" />
-                  </div>
-                )}
-                <span className={`whitespace-nowrap text-[14px] font-semibold px-[7px] transition-colors ${isActive ? 'text-[#FAA619]' : 'text-[#000000] group-hover:text-[#FAA619]'}`}>{titleText}</span>
-              </>
-            )}
-          </NavLink>
-        );
-      })}
-    </nav>
+    <DesktopMegaMenu
+      menu={menu || FALLBACK_HEADER_MENU}
+      primaryDomainUrl={primaryDomainUrl}
+      publicStoreDomain={publicStoreDomain}
+      isScrolled={isScrolled}
+    />
   );
 }
 
@@ -726,6 +669,8 @@ function HeaderMenuMobileToggle() {
   const { open } = useAside();
   return (
     <button
+      type="button"
+      aria-label="Open menu"
       className="lg:hidden flex flex-col justify-center items-center gap-[4px] w-6 h-6 mr-1"
       onClick={() => open('mobile')}
     >
