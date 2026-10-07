@@ -57,7 +57,7 @@ export const HOME_SECTIONS_QUERY = `#graphql
           }
         }
         data: field(key: "section_data") {
-          references(first: 10) {
+          references(first: 50) {
             nodes {
               ... on Metaobject {
                 id
@@ -151,15 +151,23 @@ function field(fields, key) {
 function imageOf(ref) {
   return ref?.__typename === 'MediaImage' && ref.image ? ref.image : undefined;
 }
+/**
+ * Section types whose section_data entries are the cards themselves (not a
+ * *_data container), e.g. hero_categories = the mobile category tile row.
+ */
+const ITEM_LIST_TYPES = new Set(['hero_slider', 'banners', 'hero_categories']);
 /** Link precedence: collection reference → url field → nothing (tile is not clickable). */
 function hrefOf(fields) {
   const collection =
     field(fields, 'collection')?.reference ??
-    field(fields, 'collections')?.reference;
+    field(fields, 'collections')?.reference ??
+    field(fields, 'category_collection')?.reference;
   if (collection?.__typename === 'Collection' && collection.handle) {
     return `/collections/${collection.handle}`;
   }
-  return toRelativeUrl(field(fields, 'url')?.value);
+  return toRelativeUrl(
+    field(fields, 'url')?.value ?? field(fields, 'category_url')?.value,
+  );
 }
 function textFields(fields) {
   const out = {};
@@ -179,7 +187,8 @@ function toCard(ref) {
   const f = ref.fields;
   const image =
     imageOf(field(f, 'image')?.reference) ??
-    imageOf(field(f, 'desktop_image')?.reference);
+    imageOf(field(f, 'desktop_image')?.reference) ??
+    imageOf(field(f, 'categories_images_mobile')?.reference);
   const text = textFields(f);
   return {
     id: ref.id ?? ref.handle ?? Math.random().toString(36),
@@ -189,6 +198,7 @@ function toCard(ref) {
       text.alt ??
       text.alt_text ??
       text.name ??
+      text.category_name ??
       text.title ??
       image?.altText ??
       '',
@@ -307,8 +317,7 @@ export async function buildHomeSections(rawSections, fetchNodes) {
         groups: [],
       };
       const isItemList =
-        refs.length > 0 &&
-        refs.every((r) => r?.type === 'hero_slider' || r?.type === 'banners');
+        refs.length > 0 && refs.every((r) => ITEM_LIST_TYPES.has(r?.type));
       if (isItemList) {
         if (section.dataType === 'banners') section.banner = toBanner(refs[0]);
         else

@@ -67,7 +67,11 @@ export function ResponsiveBanner({desktop, mobile, loading = 'lazy'}) {
           width={main.image.width ?? undefined}
           height={main.image.height ?? undefined}
           loading={loading}
-          className="h-auto w-full"
+          // Never stretch a banner past its real width (a small upload would blur).
+          style={
+            main.image.width ? {maxWidth: `${main.image.width}px`} : undefined
+          }
+          className="mx-auto h-auto w-full"
         />
       </picture>
     </MaybeLink>

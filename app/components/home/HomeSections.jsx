@@ -8,6 +8,7 @@ import {
   ResponsiveBanner,
   SectionHeading,
   SectionShell,
+  withWidth,
 } from './parts';
 /**
  * Renders the homepage in the order set by `sort_order` on the `home_page`
@@ -80,6 +81,8 @@ export function HomeSectionSwitch({section, isFirst}) {
           <BrandBannerCarousel section={section} />
         </SectionShell>
       );
+    case 'hero_categories':
+      return <HeroCategoriesRow section={section} />;
     case 'in_trend_data':
       return (
         <SectionShell>
@@ -122,6 +125,42 @@ export function HomeSectionSwitch({section, isFirst}) {
         </SectionShell>
       );
   }
+}
+/**
+ * Mobile category row ("Mobile hero categories"): small tiles with a name,
+ * scrolled sideways. Mobile only, as on lifestylestores.com; the desktop
+ * header already shows these categories.
+ */
+function HeroCategoriesRow({section}) {
+  const cards = section.cards.filter((c) => c.image);
+  if (!cards.length) return null;
+  return (
+    <section className="py-3 md:hidden" aria-label="Shop by category">
+      <ul className="flex snap-x gap-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {cards.map((card, i) => (
+          <li key={card.id} className="w-[76px] shrink-0 snap-start">
+            <MaybeLink
+              to={card.href}
+              className="flex flex-col items-center gap-1.5"
+            >
+              <img
+                src={withWidth(card.image.url, 160)}
+                srcSet={`${withWidth(card.image.url, 160)} 2x`}
+                alt={card.alt}
+                width={76}
+                height={76}
+                loading={i < 5 ? 'eager' : 'lazy'}
+                className="h-[76px] w-[76px] rounded object-cover"
+              />
+              <span className="line-clamp-2 text-center text-[11px] leading-tight font-medium text-ink">
+                {card.text.category_name ?? card.alt}
+              </span>
+            </MaybeLink>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 /** Homepage · Large Brand Banner Carousel ("Chartbusters") — 2 large banners per view on desktop. */
 function BrandBannerCarousel({section}) {
