@@ -5,6 +5,8 @@ import {PRODUCT_CARD_FRAGMENT} from '~/lib/product-card';
 import {getFilters, getSort} from '~/lib/collection-filters';
 import {menuItemUrl, parseMenuTitle} from '~/lib/menu';
 import {Breadcrumb} from '~/components/ui/Breadcrumb';
+import {PageBlocks} from '~/components/page-builder/PageBlocks';
+import {loadPageLayout} from '~/lib/page-builder.server';
 import {ProductCard} from '~/components/plp/ProductCard';
 import {ActiveFilterChips, FilterSidebar} from '~/components/plp/FilterSidebar';
 import {
@@ -41,13 +43,21 @@ export async function loader({context, params, request}) {
       ? {last: PAGE_SIZE, startCursor: cursor}
       : {first: PAGE_SIZE, endCursor: cursor}
     : {first: PAGE_SIZE};
-  const [{collection}, popular] = await Promise.all([
+  const [{collection}, popular, layout] = await Promise.all([
     storefront.query(COLLECTION_PLP_QUERY, {
       variables: {handle, filters, sortKey, reverse, ...pagination},
     }),
     storefront
       .query(POPULAR_SEARCHES_QUERY, {cache: storefront.CacheLong()})
       .catch(() => null),
+    // Sub category page built in /editor → Pages: blocks above the products,
+    // on the first page only.
+    cursor
+      ? null
+      : loadPageLayout(storefront, `category-${handle}`).catch((error) => {
+          console.error('Sub category page', error);
+          return null;
+        }),
   ]);
   if (!collection) {
     throw new Response(`Collection ${handle} not found`, {status: 404});
@@ -64,6 +74,7 @@ export async function loader({context, params, request}) {
     : [];
   return {
     collection,
+    blocks: layout?.blocks ?? [],
     fallback,
     hasFilters: filters.length > 0,
     sort,
@@ -78,8 +89,15 @@ export async function loader({context, params, request}) {
   };
 }
 export default function Collection() {
-  const {collection, sort, faqs, popularSearches, fallback, hasFilters} =
-    useLoaderData();
+  const {
+    collection,
+    blocks,
+    sort,
+    faqs,
+    popularSearches,
+    fallback,
+    hasFilters,
+  } = useLoaderData();
   const root = useRouteLoaderData('root');
   const {crumbs, pills} = useMenuContext(
     collection.handle,
@@ -96,6 +114,13 @@ export default function Collection() {
       </div>
 
       <SubCategoryPills links={pills} />
+
+      {blocks.length > 0 && (
+        // Cancels this page's side padding; each block adds its own.
+        <div className="-mx-4 mb-8 md:-mx-6">
+          <PageBlocks blocks={blocks} />
+        </div>
+      )}
 
       <div className="flex gap-8">
         <FilterSidebar filters={products.filters} />

@@ -2090,8 +2090,7 @@ export type PageLayoutQuery = {
                           | 'Model3d'
                           | 'Page'
                           | 'Product'
-                          | 'ProductVariant'
-                          | 'Video';
+                          | 'ProductVariant';
                       }
                     | ({__typename: 'Collection'} & Pick<
                         StorefrontAPI.Collection,
@@ -2109,6 +2108,17 @@ export type PageLayoutQuery = {
                         StorefrontAPI.Metaobject,
                         'handle'
                       >)
+                    | ({__typename: 'Video'} & {
+                        sources: Array<
+                          Pick<
+                            StorefrontAPI.VideoSource,
+                            'url' | 'mimeType' | 'format' | 'width' | 'height'
+                          >
+                        >;
+                        previewImage?: StorefrontAPI.Maybe<
+                          Pick<StorefrontAPI.Image, 'url'>
+                        >;
+                      })
                   >;
                   references?: StorefrontAPI.Maybe<{
                     nodes: Array<
@@ -2682,7 +2692,15 @@ export type PageBuilderOptionsQuery = {
     >;
   };
   menu?: StorefrontAPI.Maybe<{
-    items: Array<Pick<StorefrontAPI.MenuItem, 'title' | 'url'>>;
+    items: Array<
+      Pick<StorefrontAPI.MenuItem, 'title' | 'url'> & {
+        items: Array<
+          Pick<StorefrontAPI.MenuItem, 'title' | 'url'> & {
+            items: Array<Pick<StorefrontAPI.MenuItem, 'title' | 'url'>>;
+          }
+        >;
+      }
+    >;
   }>;
 };
 
@@ -3397,7 +3415,7 @@ interface GeneratedQueryTypes {
     return: HomeNodesQuery;
     variables: HomeNodesQueryVariables;
   };
-  '#graphql\n  fragment PageBlockImage on Image {\n    url\n    altText\n    width\n    height\n  }\n  query PageLayout(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    layout: metaobject(handle: {type: "page_layout", handle: $handle}) {\n      handle\n      title: field(key: "title") {\n        value\n      }\n      description: field(key: "description") {\n        value\n      }\n      sections: field(key: "sections") {\n        references(first: 40) {\n          nodes {\n            ... on Metaobject {\n              id\n              fields {\n                key\n                value\n                reference {\n                  __typename\n                  ... on MediaImage {\n                    image {\n                      ...PageBlockImage\n                    }\n                  }\n                  ... on Collection {\n                    handle\n                    title\n                  }\n                  ... on Metaobject {\n                    handle\n                  }\n                }\n                references(first: 12) {\n                  nodes {\n                    ... on Collection {\n                      handle\n                      title\n                      image {\n                        ...PageBlockImage\n                      }\n                      products(first: 1, sortKey: BEST_SELLING) {\n                        nodes {\n                          featuredImage {\n                            ...PageBlockImage\n                          }\n                        }\n                      }\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  fragment PageBlockImage on Image {\n    url\n    altText\n    width\n    height\n  }\n  query PageLayout(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    layout: metaobject(handle: {type: "page_layout", handle: $handle}) {\n      handle\n      title: field(key: "title") {\n        value\n      }\n      description: field(key: "description") {\n        value\n      }\n      sections: field(key: "sections") {\n        references(first: 40) {\n          nodes {\n            ... on Metaobject {\n              id\n              fields {\n                key\n                value\n                reference {\n                  __typename\n                  ... on MediaImage {\n                    image {\n                      ...PageBlockImage\n                    }\n                  }\n                  ... on Collection {\n                    handle\n                    title\n                  }\n                  ... on Metaobject {\n                    handle\n                  }\n                  ... on Video {\n                    sources {\n                      url\n                      mimeType\n                      format\n                      width\n                      height\n                    }\n                    previewImage {\n                      url\n                    }\n                  }\n                }\n                references(first: 12) {\n                  nodes {\n                    ... on Collection {\n                      handle\n                      title\n                      image {\n                        ...PageBlockImage\n                      }\n                      products(first: 1, sortKey: BEST_SELLING) {\n                        nodes {\n                          featuredImage {\n                            ...PageBlockImage\n                          }\n                        }\n                      }\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: PageLayoutQuery;
     variables: PageLayoutQueryVariables;
   };
@@ -3445,7 +3463,7 @@ interface GeneratedQueryTypes {
     return: CatalogQuery;
     variables: CatalogQueryVariables;
   };
-  '#graphql\n  query PageBuilderOptions($country: CountryCode, $language: LanguageCode)\n  @inContext(country: $country, language: $language) {\n    collections(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n      }\n    }\n    homeSections: metaobjects(type: "home_page", first: 50) {\n      nodes {\n        id\n        handle\n        heading: field(key: "heading") {\n          reference {\n            ... on Metaobject {\n              title: field(key: "heading") {\n                value\n              }\n            }\n          }\n        }\n      }\n    }\n    menu(handle: "main-menu") {\n      items {\n        title\n        url\n      }\n    }\n  }\n': {
+  '#graphql\n  query PageBuilderOptions($country: CountryCode, $language: LanguageCode)\n  @inContext(country: $country, language: $language) {\n    collections(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n      }\n    }\n    homeSections: metaobjects(type: "home_page", first: 50) {\n      nodes {\n        id\n        handle\n        heading: field(key: "heading") {\n          reference {\n            ... on Metaobject {\n              title: field(key: "heading") {\n                value\n              }\n            }\n          }\n        }\n      }\n    }\n    menu(handle: "main-menu") {\n      items {\n        title\n        url\n        items {\n          title\n          url\n          items {\n            title\n            url\n          }\n        }\n      }\n    }\n  }\n': {
     return: PageBuilderOptionsQuery;
     variables: PageBuilderOptionsQueryVariables;
   };

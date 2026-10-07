@@ -517,6 +517,83 @@ export async function applyUpdates(env, updates) {
   return {saved, errors};
 }
 
+const ALLOWED_VIDEO_TYPES = new Set([
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+]);
+const MAX_VIDEO_BYTES = 30 * 1024 * 1024;
+
+/**
+ * Uploads a video to Shopify Files (same route as images). Shopify then
+ * converts it, which can take a minute: the id is usable straight away and
+ * the video starts playing on the site once processing finishes.
+ */
+export async function uploadVideo(env, file, alt = '') {
+  if (!file || typeof file.arrayBuffer !== 'function' || !file.size) {
+    return {error: 'Choose a video file.'};
+  }
+  if (!ALLOWED_VIDEO_TYPES.has(file.type)) {
+    return {error: 'Use an MP4, WebM or MOV video.'};
+  }
+  if (file.size > MAX_VIDEO_BYTES) {
+    return {
+      error: 'Videos must be 30 MB or smaller. Shorten or compress it first.',
+    };
+  }
+  const filename = String(file.name || 'video').replace(/[^\w.-]+/g, '-');
+  const staged = await adminGraphql(env, STAGE_UPLOAD, {
+    input: [
+      {
+        filename,
+        mimeType: file.type,
+        resource: 'VIDEO',
+        httpMethod: 'POST',
+        fileSize: String(file.size),
+      },
+    ],
+  });
+  const stageErr = staged?.stagedUploadsCreate?.userErrors?.[0];
+  const target = staged?.stagedUploadsCreate?.stagedTargets?.[0];
+  if (stageErr || !target) {
+    return {error: stageErr?.message ?? 'Shopify did not accept the upload.'};
+  }
+  const form = new FormData();
+  for (const {name, value} of target.parameters) form.append(name, value);
+  form.append('file', file, filename);
+  const put = await fetch(target.url, {method: 'POST', body: form});
+  if (!put.ok) return {error: `Upload failed (${put.status}). Try again.`};
+
+  const created = await adminGraphql(env, CREATE_FILE, {
+    files: [{originalSource: target.resourceUrl, contentType: 'VIDEO', alt}],
+  });
+  const createErr = created?.fileCreate?.userErrors?.[0];
+  const media = created?.fileCreate?.files?.[0];
+  if (createErr || !media?.id) {
+    return {error: createErr?.message ?? 'Shopify could not save the video.'};
+  }
+  let preview = null;
+  let status = media.fileStatus;
+  for (let i = 0; i < 8 && status !== 'READY'; i++) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const res = await adminGraphql(env, VIDEO_STATUS, {id: media.id});
+    status = res?.node?.fileStatus ?? status;
+    preview = res?.node?.preview?.image?.url ?? preview;
+    if (status === 'FAILED') {
+      return {error: 'Shopify could not process this video. Try another file.'};
+    }
+  }
+  return {id: media.id, url: preview, processing: status !== 'READY'};
+}
+
+const VIDEO_STATUS = `
+  query EditorVideoStatus($id: ID!) {
+    node(id: $id) {
+      ... on Video { id fileStatus preview { image { url } } }
+    }
+  }
+`;
+
 const STAGE_UPLOAD = `
   mutation EditorStage($input: [StagedUploadInput!]!) {
     stagedUploadsCreate(input: $input) {

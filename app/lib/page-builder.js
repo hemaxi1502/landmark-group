@@ -4,7 +4,10 @@
  * Shopify data:
  *   page_layout (metaobject)  handle = page address
  *                               "<slug>"            → /pages/<slug>
- *                               "department-<coll>" → replaces /department/<coll>
+ *                               "department-<coll>" → top menu category page,
+ *                                                     replaces /department/<coll>
+ *                               "category-<coll>"   → sub category page, shown
+ *                                                     above /collections/<coll>
  *     title, description, sections → [page_section]
  *   page_section (metaobject) kind + the settings below
  *
@@ -26,16 +29,17 @@ export const FIELD_INFO = {
   count: {label: 'Number of products', kind: 'number', min: 1, max: 24},
   image: {label: 'Image (desktop)', kind: 'image'},
   mobile_image: {label: 'Image (mobile)', kind: 'image'},
+  video: {label: 'Video (optional)', kind: 'video'},
   home_section: {label: 'Homepage section', kind: 'home_section'},
 };
 
 export const BLOCK_TYPES = {
   banner: {
-    label: 'Banner',
+    label: 'Banner / Hero',
     description:
-      'Full-width image, optionally clickable. Mobile image optional.',
-    fields: ['image', 'mobile_image', 'link', 'heading'],
-    labels: {heading: 'Image description (alt text)'},
+      'Full-width image or video, optionally clickable. Mobile image optional.',
+    fields: ['image', 'mobile_image', 'video', 'link', 'heading'],
+    labels: {heading: 'Description (alt text)'},
   },
   product_carousel: {
     label: 'Product carousel',
@@ -76,9 +80,9 @@ export const BLOCK_TYPES = {
     fields: ['home_section'],
   },
   department: {
-    label: 'Department (automatic)',
+    label: 'Category page (automatic)',
     description:
-      'The full automatic department layout for a collection: hero, categories, best sellers, brands, prices.',
+      'The full automatic top menu category layout: hero, sub categories, best sellers, brands, prices.',
     fields: ['collection'],
   },
 };
@@ -95,10 +99,55 @@ export function slugify(value) {
     .slice(0, 60);
 }
 
+/** Page types offered when creating a page. */
+export const PAGE_KINDS = {
+  landing: {label: 'Landing page', prefix: ''},
+  top: {label: 'Top menu category page', prefix: 'department-'},
+  sub: {label: 'Sub category page', prefix: 'category-'},
+};
+
+/** Which kind of page a page_layout handle is. */
+export function pageKindOf(handle = '') {
+  if (handle.startsWith('department-')) return 'top';
+  if (handle.startsWith('category-')) return 'sub';
+  return 'landing';
+}
+
 /** Where a page_layout handle shows up on the site. */
-export function layoutPath(handle) {
-  const dept = /^department-(.+)$/.exec(handle ?? '');
-  return dept ? `/department/${dept[1]}` : `/pages/${handle}`;
+export function layoutPath(handle = '') {
+  const kind = pageKindOf(handle);
+  if (kind === 'top')
+    return `/department/${handle.slice('department-'.length)}`;
+  if (kind === 'sub') return `/collections/${handle.slice('category-'.length)}`;
+  return `/pages/${handle}`;
+}
+
+/**
+ * What a block still needs before it can show, or '' when it's ready.
+ * `v` holds the editor's values (ids), so this runs in the editor and on the
+ * server before saving.
+ */
+export function missingFor(kind, v = {}) {
+  switch (kind) {
+    case 'banner':
+      return v.image || v.mobile_image || v.video
+        ? ''
+        : 'Upload an image or a video.';
+    case 'category_tiles':
+      return v.collections?.length ? '' : 'Add at least one collection.';
+    case 'text':
+      return v.heading || v.text ? '' : 'Write a heading or some text.';
+    case 'home_section':
+      return v.home_section ? '' : 'Pick a homepage section.';
+    case 'product_carousel':
+    case 'product_grid':
+    case 'brand_tiles':
+    case 'price_bands':
+    case 'department':
+      return v.collection ? '' : 'Pick a collection.';
+    default:
+      return 'Unknown block type.';
+  }
 }
 
 function value(fields, key) {
@@ -107,6 +156,15 @@ function value(fields, key) {
 
 function imageOf(ref) {
   return ref?.image ?? null;
+}
+
+/** Storefront Video → {sources, poster}; null until Shopify has processed it. */
+function videoOf(ref) {
+  const sources = (ref?.sources ?? [])
+    .filter((s) => s?.url && /mp4|webm/i.test(s.mimeType ?? s.format ?? ''))
+    .sort((a, b) => (b.width ?? 0) - (a.width ?? 0));
+  if (!sources.length) return null;
+  return {sources, poster: ref.previewImage?.url ?? null};
 }
 
 /**
@@ -141,6 +199,7 @@ export function parseBlock(node) {
         empty: !c.products?.nodes?.length,
       })),
     image: imageOf(value(f, 'image')?.reference),
+    video: videoOf(value(f, 'video')?.reference),
     mobileImage: imageOf(value(f, 'mobile_image')?.reference),
     homeSection: value(f, 'home_section')?.reference?.handle ?? null,
   };
@@ -150,7 +209,7 @@ export function parseBlock(node) {
 export function isRenderable(block) {
   switch (block.kind) {
     case 'banner':
-      return Boolean(block.image || block.mobileImage);
+      return Boolean(block.image || block.mobileImage || block.video);
     case 'product_carousel':
     case 'product_grid':
     case 'brand_tiles':

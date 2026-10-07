@@ -145,17 +145,20 @@ and Showcase banners also use the banner's own `url` field.
 Build pages from ready-made blocks without a developer. Same password as `/editor`; the **Homepage | Pages** tabs switch between the two editors.
 
 ### For the content team
-1. Open `/editor/pages` → **Create a page**.
-   - **Landing page**: give it a title (e.g. "Diwali Sale"). It goes live at `/pages/diwali-sale`.
-   - **Department page**: pick a department. It replaces the automatic page at `/department/<name>`. Add the **Department (automatic)** block to keep the automatic layout and put your own blocks above/below it. Delete the page to go back to the automatic one.
-2. **Add a block** from the library, fill in its settings (blocks marked *Needs setup* don't show on the site until they have what they need).
-3. Use the arrows to reorder, **Show** to hide/show, **Remove** to delete a block.
-4. **Save** — the page updates on the site straight away. **View page ↗** opens it.
+1. Open `/editor/pages` → **Create a page** and pick the kind:
+   - **Landing page**: give it a title (e.g. "Diwali Sale"). Live at `/pages/diwali-sale`.
+   - **Top menu category page**: pick Women, Men, Kids… It replaces the page that top menu tile opens (`/department/<name>`). Add the **Category page (automatic)** block to keep the automatic layout and add your own blocks around it. Delete the page to go back to the automatic one.
+   - **Sub category page**: pick a sub category (Topwear, Jeans…). Your blocks show above its product list (`/collections/<name>`).
+2. **Add a block**: the picture beside each block shows its layout on the page.
+3. Fill in each block. A block ticked **Show** can't be saved without what it needs (image or video, collection, text…): Save shows an alert listing what's missing and marks those blocks red. Untick **Show** to keep a block as an unfinished draft.
+4. Use the arrows to reorder, **Remove** to delete a block, then **Save**: the page updates straight away. **View page ↗** opens it.
 5. Link to the page from a menu (Shopify admin → Content → Menus) or a homepage banner in `/editor`.
+
+**Videos** (Banner / Hero block): MP4, WebM or MOV up to 30 MB. They play muted on a loop; the desktop image shows while the video loads. Shopify converts each upload, so a new video can take a minute or two to start playing after saving.
 
 | Block | Settings | Uses |
 |---|---|---|
-| Banner | desktop + mobile image, link, alt text | homepage banner component |
+| Banner / Hero | desktop + mobile image, video, link, alt text | homepage banner component |
 | Product carousel | heading, collection, number of products | department/PDP product row |
 | Product grid | heading, collection, number of products | category page grid |
 | Category tiles | heading, up to 12 collections | department category tiles |
@@ -163,12 +166,14 @@ Build pages from ready-made blocks without a developer. Same password as `/edito
 | Shop by price | heading, collection | department price bands |
 | Text | heading, paragraph, button link | — |
 | Homepage section | any homepage section (hero, Top Categories, …) | the homepage section itself |
-| Department (automatic) | collection | the whole automatic department page |
+| Category page (automatic) | collection | the whole automatic top menu category page |
 
 Example: `/pages/festive-sale` (8 blocks) was built this way.
 
 ### For developers
-- Data: metaobjects `page_layout` (handle = address, `title`, `description`, `sections`) and `page_section` (`kind` + settings). Storefront read access is public; writes go through the editor app (Admin API).
+- Data: metaobjects `page_layout` (handle = address: `<slug>`, `department-<collection>` or `category-<collection>`; `title`, `description`, `sections`) and `page_section` (`kind` + settings, incl. `video`).
+- The "must have data to show" rule is `missingFor()` in `lib/page-builder.js`, used by the editor and enforced again on the server in `validateLayout()`.
+- Videos are served from the store domain (`/cdn/shop/videos/…`); `entry.server.jsx` allows `*.myshopify.com` and `cdn.shopify.com` in `media-src`. **Add the custom domain there when one is connected.** Storefront read access is public; writes go through the editor app (Admin API).
 - `lib/page-builder.js` — `BLOCK_TYPES` (the block library) + parsing; `lib/page-builder.server.js` — storefront loading; `lib/page-builder-admin.server.js` — editor reads/writes + validation; `components/page-builder/PageBlocks.jsx` — rendering; `routes/editor_.pages.jsx` — the editor.
 - **Add a block type**: add an entry to `BLOCK_TYPES` (label, description, fields), a `case` in `PageBlocks`, and a `case` in `resolveBlock` if it needs data; then add the kind to the `page_section` definition's "Block type" choices in Shopify admin.
 - Only page-agnostic components are blocks. Product-page parts (gallery, size chart, add to basket) and the filter sidebar need their page's context and aren't offered.

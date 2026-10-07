@@ -27,6 +27,13 @@ export function PageBlocks({blocks}) {
 function Block({block, first}) {
   switch (block.kind) {
     case 'banner':
+      if (block.video) {
+        return (
+          <div className="container-site mt-6 first:mt-0 md:mt-10">
+            <VideoBanner block={block} />
+          </div>
+        );
+      }
       return (
         <div className="container-site mt-6 first:mt-0 md:mt-10">
           <ResponsiveBanner
@@ -194,4 +201,36 @@ function Block({block, first}) {
     default:
       return null;
   }
+}
+
+/** Autoplaying, muted, looping hero video; the image is its poster. */
+function VideoBanner({block}) {
+  const link = normalizeLink(block.link);
+  const poster = block.image?.url ?? block.video.poster ?? undefined;
+  const video = (
+    <video
+      className="block h-auto w-full rounded"
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      poster={poster}
+      aria-label={block.heading || undefined}
+    >
+      {block.video.sources.map((s) => (
+        <source key={s.url} src={s.url} type={s.mimeType} />
+      ))}
+    </video>
+  );
+  if (!link) return video;
+  return /^https?:\/\//.test(link) ? (
+    <a href={link} aria-label={block.heading || 'Open'}>
+      {video}
+    </a>
+  ) : (
+    <Link to={link} prefetch="intent" aria-label={block.heading || 'Open'}>
+      {video}
+    </Link>
+  );
 }

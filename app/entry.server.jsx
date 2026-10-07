@@ -24,16 +24,30 @@ export default async function handleRequest(
     },
     imgSrc: [
       "'self'",
-      "data:",
-      "blob:", // editor: preview of an image before it finishes uploading
-      "https://cdn.shopify.com",
-      "https://media-uk-india-banners.landmarkshops.in",
-      "https://assets-cloud.landmarkshops.in",
-      "https://cms.landmarkshops.in",
+      'data:',
+      'blob:', // editor: preview of an image before it finishes uploading
+      'https://cdn.shopify.com',
+      'https://media-uk-india-banners.landmarkshops.in',
+      'https://assets-cloud.landmarkshops.in',
+      'https://cms.landmarkshops.in',
     ],
     // Figtree is loaded from Google Fonts in root.jsx; without these the CSP blocks it.
-    styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.shopify.com', 'https://fonts.googleapis.com'],
+    styleSrc: [
+      "'self'",
+      "'unsafe-inline'",
+      'https://cdn.shopify.com',
+      'https://fonts.googleapis.com',
+    ],
     fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+    // Page builder hero videos: Shopify serves them from the store domain
+    // (https://<shop>.myshopify.com/cdn/shop/videos/…) or its CDN. Add the
+    // custom domain here when one is connected.
+    mediaSrc: [
+      "'self'",
+      'blob:',
+      'https://cdn.shopify.com',
+      'https://*.myshopify.com',
+    ],
   });
 
   const body = await renderToReadableStream(

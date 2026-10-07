@@ -4,6 +4,8 @@ import {
   FIELD_INFO,
   LAYOUT_TYPE,
   SECTION_TYPE,
+  blockLabel,
+  missingFor,
   slugify,
 } from './page-builder.js';
 
@@ -19,6 +21,7 @@ import {
 const GID = {
   collection: /^gid:\/\/shopify\/Collection\/\d+$/,
   image: /^gid:\/\/shopify\/MediaImage\/\d+$/,
+  video: /^gid:\/\/shopify\/Video\/\d+$/,
   metaobject: /^gid:\/\/shopify\/Metaobject\/\d+$/,
 };
 const MAX = {heading: 255, text: 2000, link: 500, title: 120, description: 320};
@@ -81,6 +84,7 @@ function toEditorBlock(node) {
       count: fieldValue(node, 'count'),
       image: fieldValue(node, 'image'),
       mobile_image: fieldValue(node, 'mobile_image'),
+      video: fieldValue(node, 'video'),
       home_section: fieldValue(node, 'home_section'),
     },
     imageUrls: {},
@@ -91,19 +95,21 @@ async function attachImageUrls(env, blocks) {
   const ids = [
     ...new Set(
       blocks.flatMap((b) =>
-        ['image', 'mobile_image']
+        ['image', 'mobile_image', 'video']
           .map((k) => b.values[k])
-          .filter((v) => GID.image.test(v)),
+          .filter((v) => GID.image.test(v) || GID.video.test(v)),
       ),
     ),
   ];
   if (!ids.length) return;
   const data = await adminGraphql(env, IMAGES_QUERY, {ids});
   const urls = Object.fromEntries(
-    (data?.nodes ?? []).filter(Boolean).map((n) => [n.id, n.image?.url]),
+    (data?.nodes ?? [])
+      .filter(Boolean)
+      .map((n) => [n.id, n.image?.url ?? n.preview?.image?.url ?? 'video']),
   );
   for (const b of blocks) {
-    for (const k of ['image', 'mobile_image']) {
+    for (const k of ['image', 'mobile_image', 'video']) {
       if (urls[b.values[k]]) b.imageUrls[k] = urls[b.values[k]];
     }
   }
@@ -142,6 +148,9 @@ export function validateLayout(input) {
       return null;
     }
     const v = b.values ?? {};
+    // A block that shows on the site must have what it needs.
+    const missing = b.hidden ? '' : missingFor(b.kind, v);
+    if (missing) errors.push(`Block ${n} (${blockLabel(b.kind)}): ${missing}`);
     const fields = [
       {key: 'kind', value: b.kind},
       {key: 'hidden', value: b.hidden ? 'true' : 'false'},
@@ -203,6 +212,13 @@ function cleanField(key, raw, n, errors, type) {
         return '';
       }
       return raw;
+    case 'video':
+      if (!raw) return '';
+      if (!GID.video.test(raw)) {
+        errors.push(`Block ${n}: invalid video.`);
+        return '';
+      }
+      return raw;
     case 'home_section':
       if (!raw) return '';
       if (!GID.metaobject.test(raw)) {
@@ -215,11 +231,14 @@ function cleanField(key, raw, n, errors, type) {
   }
 }
 
-/** Handle for a new page: "summer-sale" or "department-men". */
+/**
+ * Handle for a new page: "summer-sale" (landing), "department-men" (top
+ * menu category) or "category-topwear" (sub category).
+ */
 export function newLayoutHandle({kind, title, collectionHandle}) {
-  if (kind === 'department') {
+  if (kind === 'top' || kind === 'sub') {
     const h = slugify(collectionHandle);
-    return h ? `department-${h}` : '';
+    return h ? `${kind === 'top' ? 'department-' : 'category-'}${h}` : '';
   }
   return slugify(title);
 }
@@ -387,7 +406,10 @@ const LAYOUT_IDS_QUERY = `
 
 const IMAGES_QUERY = `
   query PageBuilderImages($ids: [ID!]!) {
-    nodes(ids: $ids) { ... on MediaImage { id image { url } } }
+    nodes(ids: $ids) {
+      ... on MediaImage { id image { url } }
+      ... on Video { id preview { image { url } } }
+    }
   }
 `;
 

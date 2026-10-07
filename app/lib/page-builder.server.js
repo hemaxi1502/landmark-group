@@ -127,6 +127,18 @@ const PAGE_LAYOUT_QUERY = `#graphql
                   ... on Metaobject {
                     handle
                   }
+                  ... on Video {
+                    sources {
+                      url
+                      mimeType
+                      format
+                      width
+                      height
+                    }
+                    previewImage {
+                      url
+                    }
+                  }
                 }
                 references(first: 12) {
                   nodes {

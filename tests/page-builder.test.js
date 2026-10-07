@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   isRenderable,
   layoutPath,
+  missingFor,
+  pageKindOf,
   normalizeLink,
   parseBlock,
   slugify,
@@ -20,7 +22,12 @@ test('page addresses', () => {
   assert.equal(layoutPath('diwali-sale'), '/pages/diwali-sale');
   assert.equal(layoutPath('department-men'), '/department/men');
   assert.equal(newLayoutHandle({kind: 'landing', title: 'Diwali Sale'}), 'diwali-sale');
-  assert.equal(newLayoutHandle({kind: 'department', collectionHandle: 'home-living'}), 'department-home-living');
+  assert.equal(newLayoutHandle({kind: 'top', collectionHandle: 'home-living'}), 'department-home-living');
+  assert.equal(newLayoutHandle({kind: 'sub', collectionHandle: 'topwear'}), 'category-topwear');
+  assert.equal(layoutPath('category-topwear'), '/collections/topwear');
+  assert.equal(pageKindOf('category-topwear'), 'sub');
+  assert.equal(pageKindOf('department-men'), 'top');
+  assert.equal(pageKindOf('festive-sale'), 'landing');
   assert.equal(newLayoutHandle({kind: 'landing', title: '!!!'}), '');
 });
 
@@ -95,4 +102,26 @@ test('validateLayout rejects bad input', () => {
   assert.ok(v.errors.some((e) => /Block 3: invalid image/.test(e)));
   assert.ok(v.errors.some((e) => /Block 4: invalid id/.test(e)));
   assert.ok(validateLayout({title: 'x', blocks: Array(41).fill({kind: 'text', values: {heading: 'a'}})}).errors.length > 0);
+});
+
+test('shown blocks must have their data; hidden blocks may be unfinished', () => {
+  assert.equal(missingFor('banner', {}), 'Upload an image or a video.');
+  assert.equal(missingFor('banner', {video: 'gid://shopify/Video/1'}), '');
+  assert.equal(missingFor('category_tiles', {collections: []}), 'Add at least one collection.');
+  assert.equal(missingFor('product_grid', {collection: C1}), '');
+  const v = validateLayout({
+    title: 'Sale',
+    blocks: [
+      {kind: 'product_carousel', values: {heading: 'x'}},
+      {kind: 'banner', values: {}, hidden: true},
+      {kind: 'banner', values: {video: 'gid://shopify/Video/42'}},
+    ],
+  });
+  assert.deepEqual(v.errors, ['Block 1 (Product carousel): Pick a collection.']);
+  const f = Object.fromEntries(v.blocks[2].fields.map((x) => [x.key, x.value]));
+  assert.equal(f.video, 'gid://shopify/Video/42');
+  assert.ok(
+    validateLayout({title: 'x', blocks: [{kind: 'banner', values: {video: 'https://x.mp4'}}]})
+      .errors.some((e) => /invalid video/.test(e)),
+  );
 });

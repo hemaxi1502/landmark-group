@@ -1,4 +1,4 @@
-import {useMemo, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {
   data,
   Form,
@@ -11,7 +11,7 @@ import {
 } from 'react-router';
 import {isAdminConfigured, AdminConfigError} from '~/lib/admin-api.server';
 import {isAuthed} from '~/lib/editor-auth.server';
-import {uploadImage} from '~/lib/editor-content.server';
+import {uploadImage, uploadVideo} from '~/lib/editor-content.server';
 import {
   createLayout,
   deleteLayout,
@@ -24,8 +24,11 @@ import {
 import {
   BLOCK_TYPES,
   FIELD_INFO,
+  PAGE_KINDS,
   blockLabel,
   layoutPath,
+  missingFor,
+  pageKindOf,
 } from '~/lib/page-builder';
 import {
   EditorTabs,
@@ -34,8 +37,9 @@ import {
 } from '~/components/editor/EditorParts';
 
 /**
- * /editor/pages — the page builder. Create landing pages (/pages/<name>) or
- * replace a department page (/department/<collection>) with blocks picked
+ * /editor/pages — the page builder. Create landing pages (/pages/<name>),
+ * top menu category pages (/department/<collection>) or sub category pages
+ * (blocks above /collections/<collection>) from blocks picked
  * from the block library (~/lib/page-builder BLOCK_TYPES), then set each
  * block's options, reorder, hide and save. Same password as /editor.
  */
@@ -91,15 +95,28 @@ function toOptions(d) {
       n.heading?.reference?.title?.value ||
       n.handle.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase()),
   }));
-  const departments = (d?.menu?.items ?? [])
-    .map((i) => {
-      const m = /\/collections\/([^/?#]+)/.exec(i.url ?? '');
-      return m
-        ? {handle: m[1], title: i.title.replace(/\s*[[(]https?:.*$/, '')}
-        : null;
+  const handleOf = (url) => /\/collections\/([^/?#]+)/.exec(url ?? '')?.[1];
+  const clean = (t = '') => t.replace(/\s*[[(]https?:.*$/, '').trim();
+  // Top menu categories, each with its sub categories (menu levels 2 and 3).
+  const topCategories = (d?.menu?.items ?? [])
+    .map((top) => {
+      const handle = handleOf(top.url);
+      if (!handle) return null;
+      const seen = new Set([handle]);
+      const subs = [];
+      for (const child of top.items ?? []) {
+        for (const item of [child, ...(child.items ?? [])]) {
+          const h = handleOf(item.url);
+          if (h && !seen.has(h)) {
+            seen.add(h);
+            subs.push({handle: h, title: clean(item.title)});
+          }
+        }
+      }
+      return {handle, title: clean(top.title), subs};
     })
     .filter(Boolean);
-  return {collections, homeSections, departments};
+  return {collections, homeSections, topCategories};
 }
 
 /** @param {import('react-router').ActionFunctionArgs} */
@@ -116,7 +133,8 @@ export async function action({request, context}) {
 
   try {
     if (intent === 'upload') {
-      const result = await uploadImage(
+      const upload = form.get('media') === 'video' ? uploadVideo : uploadImage;
+      const result = await upload(
         env,
         form.get('file'),
         String(form.get('alt') ?? ''),
@@ -125,16 +143,22 @@ export async function action({request, context}) {
     }
 
     if (intent === 'create') {
-      const kind = form.get('kind') === 'department' ? 'department' : 'landing';
+      const kind = ['top', 'sub'].includes(form.get('kind'))
+        ? form.get('kind')
+        : 'landing';
       const collectionHandle = String(form.get('collection') ?? '');
       const title =
         String(form.get('title') ?? '').trim() ||
-        (kind === 'department'
-          ? String(form.get('collectionTitle') ?? '')
-          : '');
+        (kind === 'landing' ? '' : String(form.get('collectionTitle') ?? ''));
       const handle = newLayoutHandle({kind, title, collectionHandle});
       if (!title || !handle) {
-        return {errors: ['Give the page a title (letters or numbers).']};
+        return {
+          errors: [
+            kind === 'landing'
+              ? 'Give the page a title (letters or numbers).'
+              : 'Pick a category.',
+          ],
+        };
       }
       const page = await createLayout(env, {handle, title});
       return redirect(`/editor/pages?id=${encodeURIComponent(page.id)}`);
@@ -193,77 +217,119 @@ function PagesList({d}) {
   const actionData = useActionData();
   const nav = useNavigation();
   const [kind, setKind] = useState('landing');
-  const [dept, setDept] = useState(d.departments[0]?.handle ?? '');
+  const [top, setTop] = useState(d.topCategories[0]?.handle ?? '');
+  const [sub, setSub] = useState(d.topCategories[0]?.subs[0]?.handle ?? '');
   const busy = nav.state !== 'idle' && nav.formData?.get('intent') === 'create';
-  const deptTitle =
-    d.departments.find((x) => x.handle === dept)?.title ??
-    d.collections.find((c) => c.handle === dept)?.title ??
-    '';
+  const allSubs = d.topCategories.flatMap((t) => t.subs);
+  const picked = kind === 'top' ? top : kind === 'sub' ? sub : '';
+  const pickedTitle =
+    kind === 'top'
+      ? d.topCategories.find((t) => t.handle === top)?.title
+      : allSubs.find((x) => x.handle === sub)?.title;
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-bold md:text-2xl">Page builder</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          Build pages from ready-made blocks: banners, product carousels,
-          category and brand tiles, homepage sections and more. Landing pages
-          appear at <code>/pages/&lt;name&gt;</code>; a department page replaces
-          the automatic page for that department.
+          Build pages from ready-made blocks: banners and videos, product
+          carousels, category and brand tiles, homepage sections and more.
         </p>
       </div>
 
       <section className="rounded border border-line p-4 md:p-5">
         <h2 className="text-base font-bold">Create a page</h2>
-        <Form method="post" className="mt-3 space-y-3">
+        <Form method="post" className="mt-3 space-y-4">
           <input type="hidden" name="intent" value="create" />
-          <fieldset className="flex flex-wrap gap-4 text-sm">
-            <legend className="sr-only">Page type</legend>
-            {[
-              ['landing', 'Landing page'],
-              ['department', 'Department page'],
-            ].map(([v, label]) => (
-              <label key={v} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="kind"
-                  value={v}
-                  checked={kind === v}
-                  onChange={() => setKind(v)}
-                  className="accent-[#FAA619]"
-                />
-                {label}
-              </label>
-            ))}
+          <fieldset>
+            <legend className="mb-2 text-sm font-semibold">
+              What kind of page?
+            </legend>
+            <div className="grid gap-2 md:grid-cols-3">
+              {Object.entries(PAGE_KIND_HELP).map(([value, help]) => (
+                <label
+                  key={value}
+                  htmlFor={`kind-${value}`}
+                  aria-label={PAGE_KINDS[value].label}
+                  className={`flex cursor-pointer gap-2 rounded border p-3 text-sm ${kind === value ? 'border-[#FAA619] bg-[#FFF4E0]' : 'border-line'}`}
+                >
+                  <input
+                    id={`kind-${value}`}
+                    type="radio"
+                    name="kind"
+                    value={value}
+                    checked={kind === value}
+                    onChange={() => setKind(value)}
+                    className="mt-0.5 accent-[#FAA619]"
+                  />
+                  <span>
+                    <span className="block font-semibold">
+                      {PAGE_KINDS[value].label}
+                    </span>
+                    <span className="block text-xs text-muted">{help}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
           </fieldset>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            {kind === 'department' && (
-              <label className="block text-sm sm:w-64">
-                <span className="mb-1 block font-semibold">Department</span>
+            {kind === 'top' && (
+              <label className="block text-sm sm:w-72">
+                <span className="mb-1 block font-semibold">
+                  Top menu category
+                </span>
                 <select
                   name="collection"
-                  value={dept}
-                  onChange={(e) => setDept(e.target.value)}
+                  value={top}
+                  onChange={(e) => setTop(e.target.value)}
                   className={inputCls}
                 >
-                  {d.departments.map((x) => (
-                    <option key={x.handle} value={x.handle}>
-                      {x.title}
+                  {d.topCategories.map((t) => (
+                    <option key={t.handle} value={t.handle}>
+                      {t.title}
                     </option>
                   ))}
                 </select>
-                <input type="hidden" name="collectionTitle" value={deptTitle} />
               </label>
             )}
+            {kind === 'sub' && (
+              <label className="block text-sm sm:w-72">
+                <span className="mb-1 block font-semibold">Sub category</span>
+                <select
+                  name="collection"
+                  value={sub}
+                  onChange={(e) => setSub(e.target.value)}
+                  className={inputCls}
+                >
+                  {d.topCategories
+                    .filter((t) => t.subs.length)
+                    .map((t) => (
+                      <optgroup key={t.handle} label={t.title}>
+                        {t.subs.map((x) => (
+                          <option key={x.handle} value={x.handle}>
+                            {x.title}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                </select>
+              </label>
+            )}
+            <input
+              type="hidden"
+              name="collectionTitle"
+              value={pickedTitle ?? ''}
+            />
             <label className="block flex-1 text-sm">
               <span className="mb-1 block font-semibold">
-                Title{kind === 'department' ? ' (optional)' : ''}
+                Title{kind === 'landing' ? '' : ' (optional)'}
               </span>
               <input
                 name="title"
                 required={kind === 'landing'}
                 maxLength={120}
                 placeholder={
-                  kind === 'department' ? deptTitle : 'e.g. Diwali Sale'
+                  kind === 'landing' ? 'e.g. Diwali Sale' : pickedTitle
                 }
                 className={inputCls}
               />
@@ -276,11 +342,21 @@ function PagesList({d}) {
               {busy ? 'Creating…' : 'Create page'}
             </button>
           </div>
-          {kind === 'department' && (
+          {kind !== 'landing' && picked && (
             <p className="text-xs text-muted">
-              Replaces <code>/department/{dept}</code>. Add a &ldquo;Department
-              (automatic)&rdquo; block to keep the automatic layout and put your
-              own blocks around it.
+              {kind === 'top' ? (
+                <>
+                  Replaces <code>/department/{picked}</code> (opened from the
+                  top menu). Add the &ldquo;Category page (automatic)&rdquo;
+                  block to keep the automatic layout and add your own blocks
+                  around it.
+                </>
+              ) : (
+                <>
+                  Your blocks show above the product list on{' '}
+                  <code>/collections/{picked}</code>.
+                </>
+              )}
             </p>
           )}
           <Errors list={actionData?.errors} />
@@ -301,7 +377,12 @@ function PagesList({d}) {
                 className="flex flex-wrap items-center justify-between gap-3 p-3 md:p-4"
               >
                 <div className="min-w-0">
-                  <p className="font-semibold">{p.title}</p>
+                  <p className="font-semibold">
+                    {p.title}
+                    <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
+                      {PAGE_KINDS[pageKindOf(p.handle)].label}
+                    </span>
+                  </p>
                   <p className="text-xs text-muted">
                     {layoutPath(p.handle)} · {p.blockCount}{' '}
                     {p.blockCount === 1 ? 'block' : 'blocks'}
@@ -332,6 +413,12 @@ function PagesList({d}) {
     </div>
   );
 }
+
+const PAGE_KIND_HELP = {
+  landing: 'A new page, e.g. a sale or campaign. Lives at /pages/<name>.',
+  top: 'Replaces the page a top menu tile opens (Women, Men, Kids…).',
+  sub: 'Adds blocks above the products of a sub category (Topwear, Jeans…).',
+};
 
 function DeleteButton({id, title}) {
   return (
@@ -371,6 +458,7 @@ function emptyValues(kind) {
     count: String(BLOCK_TYPES[kind]?.defaults?.count ?? ''),
     image: '',
     mobile_image: '',
+    video: '',
     home_section: '',
   };
 }
@@ -393,6 +481,23 @@ function PageEditor({d, save}) {
   const dirty = JSON.stringify(payload) !== initial;
   const saving = save.state !== 'idle';
   const result = save.state === 'idle' ? save.data : null;
+  const [attempted, setAttempted] = useState(false);
+  // Blocks set to Show that are missing what they need block saving.
+  const problems = blocks
+    .map((b, i) => ({
+      key: b.key,
+      n: i + 1,
+      label: blockLabel(b.kind),
+      msg: b.hidden ? '' : missingFor(b.kind, b.values),
+    }))
+    .filter((x) => x.msg);
+  if (!title.trim())
+    problems.unshift({
+      key: 'title',
+      n: 0,
+      label: 'Page',
+      msg: 'Add a page title.',
+    });
 
   const update = (key, patch) =>
     setBlocks((list) =>
@@ -429,6 +534,20 @@ function PageEditor({d, save}) {
     ]);
 
   const onSave = () => {
+    if (problems.length) {
+      setAttempted(true);
+      window.alert(
+        `Please fill in these blocks before saving (or untick "Show"):\n\n${problems
+          .map((p) => (p.n ? `Block ${p.n} (${p.label}): ${p.msg}` : p.msg))
+          .join('\n')}`,
+      );
+      const first = problems.find((p) => p.n);
+      if (first)
+        document
+          .getElementById(`block-${first.key}`)
+          ?.scrollIntoView({behavior: 'smooth', block: 'center'});
+      return;
+    }
     const fd = new FormData();
     fd.set('intent', 'save');
     fd.set('id', layout.id);
@@ -498,6 +617,7 @@ function PageEditor({d, save}) {
             index={i}
             total={blocks.length}
             d={d}
+            forceOpen={attempted}
             onMove={(delta) => move(i, delta)}
             onRemove={() => remove(b.key)}
             onHidden={(hidden) => update(b.key, {hidden})}
@@ -525,6 +645,12 @@ function PageEditor({d, save}) {
               </span>
             ) : result?.errors ? (
               <Errors list={result.errors} />
+            ) : problems.length ? (
+              <span className="font-semibold text-danger">
+                {problems.length === 1
+                  ? '1 block needs details before you can save.'
+                  : `${problems.length} blocks need details before you can save.`}
+              </span>
             ) : dirty ? (
               <span className="font-semibold">You have unsaved changes.</span>
             ) : (
@@ -572,7 +698,10 @@ function summary(block, d) {
   const coll = d.collections.find((c) => c.id === v.collection)?.title;
   switch (block.kind) {
     case 'banner':
-      return v.image || v.mobile_image ? 'Image set' : 'No image yet';
+      return [v.video && 'Video', (v.image || v.mobile_image) && 'Image']
+        .filter(Boolean)
+        .join(' + ')
+        .concat(' set');
     case 'category_tiles':
       return `${v.collections.length} collection${v.collections.length === 1 ? '' : 's'}`;
     case 'home_section':
@@ -594,6 +723,7 @@ function BlockCard({
   index,
   total,
   d,
+  forceOpen,
   onMove,
   onRemove,
   onHidden,
@@ -603,20 +733,30 @@ function BlockCard({
   const [open, setOpen] = useState(!block.id);
   const type = BLOCK_TYPES[block.kind];
   const label = (field) => type?.labels?.[field] ?? FIELD_INFO[field].label;
-  const missing = !isComplete(block);
+  const missing = missingFor(block.kind, block.values);
+  const blocking = missing && !block.hidden;
+  const isOpen = open || (forceOpen && blocking);
 
   return (
     <li
-      className={`rounded border ${block.hidden ? 'border-dashed border-line bg-surface/60' : 'border-line bg-white'}`}
+      id={`block-${block.key}`}
+      className={`scroll-mt-24 rounded border ${
+        blocking
+          ? 'border-red-400 bg-white'
+          : block.hidden
+            ? 'border-dashed border-line bg-surface/60'
+            : 'border-line bg-white'
+      }`}
     >
       <div className="flex flex-wrap items-center gap-3 p-3">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface text-xs font-bold">
           {index + 1}
         </span>
+        <BlockPreview kind={block.kind} className="hidden h-14 w-24 sm:flex" />
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
+          onClick={() => setOpen(!isOpen)}
+          aria-expanded={isOpen}
           className="min-w-0 flex-1 text-left"
         >
           <span className="block text-sm font-bold">
@@ -627,13 +767,17 @@ function BlockCard({
               </span>
             )}
             {missing && (
-              <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">
-                Needs setup
+              <span
+                className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${blocking ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}
+              >
+                Needs details
               </span>
             )}
           </span>
-          <span className="block truncate text-xs text-muted">
-            {summary(block, d)}
+          <span
+            className={`block truncate text-xs ${blocking ? 'text-red-700' : 'text-muted'}`}
+          >
+            {missing || summary(block, d)}
           </span>
         </button>
         <label className="flex items-center gap-1.5 text-xs">
@@ -662,9 +806,20 @@ function BlockCard({
         </button>
       </div>
 
-      {open && type && (
+      {isOpen && type && (
         <div className="grid gap-4 border-t border-line p-4 md:grid-cols-2">
-          <p className="text-xs text-muted md:col-span-2">{type.description}</p>
+          <div className="flex gap-3 md:col-span-2">
+            <BlockPreview kind={block.kind} className="h-16 w-28 shrink-0" />
+            <p className="text-xs text-muted">
+              {type.description}
+              {block.hidden && missing && (
+                <span className="mt-1 block text-amber-800">
+                  Hidden blocks can be saved unfinished; fill them in before
+                  ticking Show.
+                </span>
+              )}
+            </p>
+          </div>
           {type.fields.map((field) => (
             <FieldInput
               key={field}
@@ -682,22 +837,129 @@ function BlockCard({
   );
 }
 
-/** Mirrors isRenderable on the storefront: what a block needs to show. */
-function isComplete(block) {
-  const v = block.values;
-  switch (block.kind) {
-    case 'banner':
-      return Boolean(v.image || v.mobile_image);
-    case 'category_tiles':
-      return v.collections.length > 0;
-    case 'text':
-      return Boolean(v.heading || v.text);
-    case 'home_section':
-      return Boolean(v.home_section);
-    default:
-      return Boolean(v.collection);
-  }
+/* ------------------------------------------------------------------ */
+/* Layout previews: a small wireframe of what each block looks like     */
+/* ------------------------------------------------------------------ */
+
+const box = 'rounded-[2px] bg-gray-300';
+
+function BlockPreview({kind, className = ''}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex shrink-0 flex-col justify-center gap-1 overflow-hidden rounded border border-line bg-white p-1.5 ${className}`}
+    >
+      {PREVIEWS[kind] ?? null}
+    </span>
+  );
 }
+
+const Row = ({n, h = 'h-6', cls = ''}) => (
+  <span className="flex flex-1 gap-0.5">
+    {Array.from({length: n}, (_, i) => (
+      <span key={i} className={`${box} ${h} flex-1 ${cls}`} />
+    ))}
+  </span>
+);
+const Line = ({w = 'w-1/2', cls = ''}) => (
+  <span className={`block h-1 rounded bg-gray-400 ${w} ${cls}`} />
+);
+
+const PREVIEWS = {
+  banner: (
+    <span
+      className={`${box} relative flex flex-1 items-center justify-center bg-gradient-to-br from-amber-200 to-orange-300`}
+    >
+      <span className="h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-white/90" />
+    </span>
+  ),
+  product_carousel: (
+    <>
+      <Line w="w-1/3" />
+      <span className="flex flex-1 items-stretch gap-0.5">
+        <span className="self-center text-[8px] leading-none text-gray-500">
+          ‹
+        </span>
+        <Row n={4} h="h-full" />
+        <span className="self-center text-[8px] leading-none text-gray-500">
+          ›
+        </span>
+      </span>
+    </>
+  ),
+  product_grid: (
+    <>
+      <Line w="w-1/3" />
+      <Row n={4} h="h-full" />
+      <Row n={4} h="h-full" />
+    </>
+  ),
+  category_tiles: (
+    <>
+      <Line w="w-1/3" />
+      <Row n={6} h="h-full" />
+      <span className="flex gap-0.5">
+        {Array.from({length: 6}, (_, i) => (
+          <span key={i} className="h-0.5 flex-1 rounded bg-gray-400" />
+        ))}
+      </span>
+    </>
+  ),
+  brand_tiles: (
+    <>
+      <Line w="w-1/3" />
+      <Row n={3} h="h-full" cls="rounded-full" />
+      <Row n={3} h="h-full" cls="rounded-full" />
+    </>
+  ),
+  price_bands: (
+    <>
+      <Line w="w-1/3" />
+      <span className="flex flex-1 gap-0.5">
+        {['499', '999', '1999', '2999'].map((p) => (
+          <span
+            key={p}
+            className="flex flex-1 items-center justify-center rounded-[2px] bg-amber-100 text-[7px] font-bold text-amber-800"
+          >
+            ₹
+          </span>
+        ))}
+      </span>
+    </>
+  ),
+  text: (
+    <span className="flex flex-1 flex-col items-center justify-center gap-1">
+      <Line w="w-1/2" cls="h-1.5 bg-gray-500" />
+      <Line w="w-3/4" />
+      <Line w="w-2/3" />
+      <span className="mt-0.5 h-2 w-1/4 rounded-[2px] bg-gray-700" />
+    </span>
+  ),
+  home_section: (
+    <span className="flex flex-1 flex-col gap-0.5">
+      <span className="flex items-center gap-1 text-[7px] font-bold uppercase text-gray-500">
+        ⌂ Home
+      </span>
+      <span
+        className={`${box} flex-1 bg-gradient-to-r from-gray-300 to-gray-200`}
+      />
+      <Row n={5} h="h-3" />
+    </span>
+  ),
+  department: (
+    <span className="flex flex-1 flex-col gap-0.5">
+      <span className="flex flex-1 gap-0.5">
+        <span className="flex flex-1 flex-col justify-center gap-0.5 rounded-[2px] bg-gray-100 px-1">
+          <Line w="w-3/4" cls="h-1.5 bg-gray-500" />
+          <Line w="w-1/2" />
+        </span>
+        <Row n={3} h="h-full" />
+      </span>
+      <Row n={6} h="h-2.5" />
+      <Row n={5} h="h-3" />
+    </span>
+  ),
+};
 
 function FieldInput({field, label, block, d, onValue, onUpload}) {
   const info = FIELD_INFO[field];
@@ -812,9 +1074,127 @@ function FieldInput({field, label, block, d, onValue, onUpload}) {
           )}
         </div>
       );
+    case 'video':
+      return (
+        <div className="md:col-span-2">
+          <p className="mb-1 text-sm font-semibold">{label}</p>
+          <VideoSlot
+            block={block}
+            field={field}
+            onUploaded={(upload) => onUpload(field, upload)}
+            onRemove={() => onValue(field, '')}
+          />
+          <p className="mt-1 text-xs text-muted">
+            MP4, WebM or MOV up to 30 MB. Plays muted on a loop; the desktop
+            image is shown while it loads.
+          </p>
+        </div>
+      );
     default:
       return null;
   }
+}
+
+function VideoSlot({block, field, onUploaded, onRemove}) {
+  const fetcher = useFetcher({key: `upload-${block.key}-${field}`});
+  const input = useRef(null);
+  const [picked, setPicked] = useState(null);
+  const busy = fetcher.state !== 'idle';
+  const result = fetcher.data?.upload;
+  const lastState = useRef(fetcher.state);
+
+  useEffect(() => {
+    const finished = lastState.current !== 'idle' && fetcher.state === 'idle';
+    lastState.current = fetcher.state;
+    if (!finished) return;
+    if (result?.id) onUploaded({...result, name: picked?.name});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state]);
+  useEffect(() => () => picked && URL.revokeObjectURL(picked.url), [picked]);
+
+  const current = block.values[field];
+  const upload = block.uploads?.[field];
+  const onPick = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPicked({url: URL.createObjectURL(file), name: file.name});
+    const data = new FormData();
+    data.set('intent', 'upload');
+    data.set('media', 'video');
+    data.set('alt', block.values.heading ?? '');
+    data.set('file', file);
+    fetcher.submit(data, {method: 'post', encType: 'multipart/form-data'});
+    e.target.value = '';
+  };
+
+  return (
+    <div className="flex flex-wrap items-start gap-3">
+      <div className="relative flex aspect-video w-48 items-center justify-center overflow-hidden rounded border border-line bg-surface">
+        {picked?.url ? (
+          <video
+            src={picked.url}
+            muted
+            loop
+            autoPlay
+            playsInline
+            className="h-full w-full object-cover"
+          />
+        ) : current && block.imageUrls?.[field]?.startsWith('http') ? (
+          <img
+            src={block.imageUrls[field]}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="text-[11px] text-muted">
+            {current ? 'Video set' : 'No video'}
+          </span>
+        )}
+        {busy && (
+          <span className="absolute inset-0 flex items-center justify-center bg-white/80 text-[11px] font-semibold">
+            Uploading…
+          </span>
+        )}
+      </div>
+      <div className="space-y-1 text-xs">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => input.current?.click()}
+          className="rounded border border-line px-3 py-1.5 font-semibold hover:bg-surface disabled:opacity-40"
+        >
+          {current ? 'Replace video' : 'Upload video'}
+        </button>
+        {current && !busy && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="block text-muted underline"
+          >
+            Remove video
+          </button>
+        )}
+        {upload?.processing && !busy && (
+          <p className="max-w-xs text-amber-800">
+            Uploaded. Shopify is still converting it; it starts playing on the
+            site a minute or two after you save.
+          </p>
+        )}
+        {result?.error && !busy && (
+          <p className="max-w-xs text-danger" role="alert">
+            {result.error}
+          </p>
+        )}
+        <input
+          ref={input}
+          type="file"
+          accept="video/mp4,video/webm,video/quicktime"
+          className="hidden"
+          onChange={onPick}
+        />
+      </div>
+    </div>
+  );
 }
 
 function CollectionsPicker({id, value, options, onChange}) {
@@ -891,17 +1271,23 @@ function AddBlock({onAdd}) {
   return (
     <section className="mt-6 rounded border border-line p-4">
       <h2 className="text-base font-bold">Add a block</h2>
+      <p className="mt-0.5 text-xs text-muted">
+        The picture next to each block shows its layout on the page.
+      </p>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {Object.entries(BLOCK_TYPES).map(([kind, t]) => (
           <li key={kind}>
             <button
               type="button"
               onClick={() => onAdd(kind)}
-              className="h-full w-full rounded border border-line p-3 text-left hover:border-ink hover:bg-surface"
+              className="flex h-full w-full gap-3 rounded border border-line p-3 text-left hover:border-ink hover:bg-surface"
             >
-              <span className="block text-sm font-bold">+ {t.label}</span>
-              <span className="mt-0.5 block text-xs text-muted">
-                {t.description}
+              <BlockPreview kind={kind} className="h-16 w-28" />
+              <span>
+                <span className="block text-sm font-bold">+ {t.label}</span>
+                <span className="mt-0.5 block text-xs text-muted">
+                  {t.description}
+                </span>
               </span>
             </button>
           </li>
@@ -951,6 +1337,14 @@ const EDITOR_OPTIONS_QUERY = `#graphql
       items {
         title
         url
+        items {
+          title
+          url
+          items {
+            title
+            url
+          }
+        }
       }
     }
   }
