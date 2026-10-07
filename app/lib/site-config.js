@@ -46,6 +46,62 @@ export const PDP_SERVICE_INFO = {
   returnsUrl: '/policies/refund-policy',
   soldBy: 'Landmark Online India Pvt Ltd',
 };
+/**
+ * Pop-up text behind the PDP service links (Click & Collect, returns,
+ * seller, shipping, rewards). The store has no Refund or Shipping policy
+ * yet, so these open in a pop-up instead of linking to a missing page.
+ * When those policies exist (Settings → Policies), set `policy` to show a
+ * "Read full policy" link.
+ */
+export const PDP_INFO_PANELS = {
+  clickAndCollect: {
+    title: 'Click & Collect',
+    steps: [
+      'Add this product to your basket and go to checkout.',
+      'Choose “Pick up” as the delivery method and select your nearest store.',
+      'We will message you when your order is ready. Collect it within 7 days with your order ID.',
+    ],
+    note: 'Pickup is free. Stores offering pickup appear at checkout.',
+  },
+  returns: {
+    title: '7 days easy returns',
+    steps: [
+      'Return within 7 days of delivery from My Orders, or at any Lifestyle store.',
+      'Items must be unused, unwashed and with original tags and packaging.',
+      'Refunds go to your original payment method within 5–7 working days after pickup.',
+    ],
+    note: 'Not returnable: innerwear, swimwear, beauty and personal care, and items marked non-returnable.',
+    policy: '',
+  },
+  soldBy: {
+    title: 'Sold by Landmark Online India Pvt Ltd',
+    steps: [
+      'All products are sold and shipped by Landmark Online India Pvt Ltd, part of the Landmark Group.',
+      'Every product is 100% original and covered by the Lifestyle returns policy.',
+      'A GST invoice is included with every order.',
+    ],
+    note: '',
+  },
+  shipping: {
+    title: 'Free shipping',
+    steps: [
+      'Free delivery on all orders. No cash-on-delivery charges.',
+      'Most orders arrive in 3–7 working days. Check your pincode on this page for an estimate.',
+      'You will get tracking details by SMS and email once the order ships.',
+    ],
+    note: '',
+    policy: '',
+  },
+  rewards: {
+    title: 'Landmark Rewards',
+    steps: [
+      'Earn points on every purchase.',
+      'Redeem points on your next purchase online or in store.',
+      'Get members-only offers and early access to sales.',
+    ],
+    note: 'Sign up or sign in to start earning.',
+  },
+};
 export const MEMBERSHIP_BANNER = {
   title: 'Join Landmark Rewards',
   text: 'Earn points on every purchase and get members-only offers.',

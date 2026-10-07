@@ -1,6 +1,7 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router';
-import {Money} from '@shopify/hydrogen';
+import {CartForm, Money} from '@shopify/hydrogen';
+import {Modal} from '~/components/ui/Modal';
 import {Icon} from '~/components/ui/Icon';
 import {discountPercent} from '~/lib/product-card';
 import {estimateDelivery, isValidPincode, usePincode} from '~/lib/pincode';
@@ -8,6 +9,7 @@ import {
   LOW_STOCK_THRESHOLD,
   MEMBERSHIP_BANNER,
   PDP_COUPONS,
+  PDP_INFO_PANELS,
   PDP_SERVICE_INFO,
 } from '~/lib/site-config';
 /* ------------------------------------------------------------------ */
@@ -48,7 +50,11 @@ export function ProductInfo({
                 <span className="text-sm text-muted">
                   MRP{' '}
                   <s>
-                    <Money as="span" data={compareAtPrice} withoutTrailingZeros />
+                    <Money
+                      as="span"
+                      data={compareAtPrice}
+                      withoutTrailingZeros
+                    />
                   </s>
                 </span>
                 <span className="text-sm font-semibold text-success">
@@ -58,12 +64,12 @@ export function ProductInfo({
             )}
           </div>
           <p className="text-xs text-muted">Inclusive of all taxes</p>
-          <Link
-            to="/policies/shipping-policy"
+          <InfoButton
+            panel="shipping"
             className="text-xs font-medium text-brand"
           >
             Free shipping on all orders
-          </Link>
+          </InfoButton>
         </div>
       )}
     </div>
@@ -73,39 +79,96 @@ export function ProductInfo({
 /* Offers / Coupons Carousel                                           */
 /* ------------------------------------------------------------------ */
 export function OffersCarousel() {
+  const track = useRef(null);
   const [copied, setCopied] = useState(null);
+  const [edges, setEdges] = useState({start: true, end: false});
+
+  const updateEdges = () => {
+    const el = track.current;
+    if (!el) return;
+    setEdges({
+      start: el.scrollLeft <= 4,
+      end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4,
+    });
+  };
+  useEffect(() => {
+    updateEdges();
+    window.addEventListener('resize', updateEdges);
+    return () => window.removeEventListener('resize', updateEdges);
+  }, []);
+
+  const scroll = (dir) => {
+    const el = track.current;
+    if (!el) return;
+    const card = el.firstElementChild;
+    const step = card ? card.getBoundingClientRect().width + 8 : el.clientWidth;
+    el.scrollBy({left: dir * step, behavior: 'smooth'});
+  };
+
+  const copy = (code) => {
+    void navigator.clipboard?.writeText(code);
+    setCopied(code);
+    window.setTimeout(() => setCopied(null), 1500);
+  };
+
+  const arrow =
+    'flex h-7 w-7 items-center justify-center rounded-full border border-line bg-white disabled:opacity-30';
+
   return (
     <section
       aria-label="Offers and discounts"
       className="rounded border border-line p-3"
     >
-      <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
-        <Icon name="tag" className="h-4 w-4 text-brand" /> Offers &amp;
-        Discounts
-      </h2>
-      <div className="no-scrollbar flex snap-x gap-2 overflow-x-auto">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+          <Icon name="tag" className="h-4 w-4 text-brand" /> Offers &amp;
+          Discounts
+        </h2>
+        {PDP_COUPONS.length > 1 && (
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => scroll(-1)}
+              disabled={edges.start}
+              aria-label="Previous offer"
+              className={arrow}
+            >
+              <Icon name="chevronLeft" className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scroll(1)}
+              disabled={edges.end}
+              aria-label="Next offer"
+              className={arrow}
+            >
+              <Icon name="chevronRight" className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+      <div
+        ref={track}
+        onScroll={updateEdges}
+        className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth"
+      >
         {PDP_COUPONS.map((c) => (
           <div
             key={c.code}
-            className="w-60 shrink-0 snap-start rounded bg-surface p-3 text-xs"
+            className="w-[85%] shrink-0 snap-start rounded bg-surface p-3 text-xs sm:w-60"
           >
             <p className="font-semibold">{c.title}</p>
             <p className="mt-0.5 text-muted">{c.text}</p>
-            <div className="mt-2 flex items-center justify-between">
-              <code className="rounded border border-dashed border-brand bg-white px-2 py-0.5 font-bold text-brand">
-                {c.code}
-              </code>
+            <div className="mt-2 flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  void navigator.clipboard?.writeText(c.code);
-                  setCopied(c.code);
-                  window.setTimeout(() => setCopied(null), 1500);
-                }}
-                className="font-semibold text-ink underline"
+                onClick={() => copy(c.code)}
+                title="Copy code"
+                className="rounded border border-dashed border-brand bg-white px-2 py-0.5 font-mono font-bold text-brand"
               >
-                {copied === c.code ? 'Copied!' : 'Copy'}
+                {copied === c.code ? 'Copied!' : c.code}
               </button>
+              <ApplyCoupon code={c.code} />
             </div>
           </div>
         ))}
@@ -113,6 +176,98 @@ export function OffersCarousel() {
     </section>
   );
 }
+
+/**
+ * Saves the code on the basket. Shopify applies it once the basket meets the
+ * coupon's minimum; until then it answers with a DISCOUNT_* warning, which
+ * the label reflects.
+ */
+function ApplyCoupon({code}) {
+  return (
+    <CartForm
+      route="/cart"
+      fetcherKey={`coupon-${code}`}
+      action={CartForm.ACTIONS.DiscountCodesUpdate}
+      inputs={{discountCodes: [code]}}
+    >
+      {(fetcher) => {
+        const busy = fetcher.state !== 'idle';
+        const done = !busy && fetcher.data;
+        const pending = fetcher.data?.warnings?.some((w) =>
+          String(w?.code ?? '').startsWith('DISCOUNT'),
+        );
+        let label = 'Apply';
+        if (busy) label = 'Applying…';
+        else if (done)
+          label = pending ? 'Saved · applies at min. value' : 'Applied ✓';
+        return (
+          <button
+            type="submit"
+            disabled={busy}
+            aria-live="polite"
+            className={`text-right font-semibold underline disabled:opacity-50 ${done ? (pending ? 'text-muted' : 'text-success') : 'text-ink'}`}
+          >
+            {label}
+          </button>
+        );
+      }}
+    </CartForm>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Info pop-ups (Click & Collect, returns, seller, shipping, rewards)  */
+/* ------------------------------------------------------------------ */
+export function InfoButton({panel, className, children}) {
+  const [open, setOpen] = useState(false);
+  const info = PDP_INFO_PANELS[panel];
+  if (!info) return null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        className={className}
+      >
+        {children}
+      </button>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        label={info.title}
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded bg-white p-5"
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <h2 className="text-lg font-semibold">{info.title}</h2>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close"
+          >
+            <Icon name="close" />
+          </button>
+        </div>
+        <ol className="list-decimal space-y-2 pl-5 text-sm">
+          {info.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        {info.note && <p className="mt-3 text-xs text-muted">{info.note}</p>}
+        {info.policy && (
+          <Link
+            to={info.policy}
+            onClick={() => setOpen(false)}
+            className="mt-4 inline-block text-sm font-semibold text-brand underline"
+          >
+            Read full policy
+          </Link>
+        )}
+      </Modal>
+    </>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Low-Stock Message                                                   */
 /* ------------------------------------------------------------------ */
@@ -183,9 +338,9 @@ export function SocialShare({title}) {
 /* ------------------------------------------------------------------ */
 export function MembershipBanner() {
   return (
-    <Link
-      to={MEMBERSHIP_BANNER.to}
-      className="flex items-center justify-between gap-3 rounded bg-gradient-to-r from-brand to-brand-dark px-4 py-3 text-white"
+    <InfoButton
+      panel="rewards"
+      className="flex w-full items-center justify-between gap-3 rounded bg-gradient-to-r from-brand to-brand-dark px-4 py-3 text-left text-white"
     >
       <span>
         <span className="block text-sm font-bold">
@@ -198,7 +353,7 @@ export function MembershipBanner() {
       <span className="shrink-0 text-xs font-semibold underline">
         {MEMBERSHIP_BANNER.cta}
       </span>
-    </Link>
+    </InfoButton>
   );
 }
 /* ------------------------------------------------------------------ */
@@ -262,6 +417,8 @@ export function ServiceInfo({price}) {
       icon: 'store',
       title: 'Click & Collect',
       text: PDP_SERVICE_INFO.clickAndCollect,
+      panel: 'clickAndCollect',
+      cta: 'How it works',
     },
     ...(emiEligible
       ? [
@@ -276,7 +433,8 @@ export function ServiceInfo({price}) {
       icon: 'return',
       title: PDP_SERVICE_INFO.returns,
       text: '',
-      link: {label: 'Details', to: PDP_SERVICE_INFO.returnsUrl},
+      panel: 'returns',
+      cta: 'Details',
     },
   ];
   return (
@@ -287,16 +445,16 @@ export function ServiceInfo({price}) {
       {rows.map((r) => (
         <div key={r.title} className="flex gap-3 p-3 text-sm">
           <Icon name={r.icon} className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="font-semibold">
               {r.title}
-              {'link' in r && r.link && (
-                <Link
-                  to={r.link.to}
+              {r.panel && (
+                <InfoButton
+                  panel={r.panel}
                   className="ml-2 text-xs font-normal text-brand underline"
                 >
-                  {r.link.label}
-                </Link>
+                  {r.cta}
+                </InfoButton>
               )}
             </p>
             {r.text && <p className="text-xs text-muted">{r.text}</p>}
@@ -305,9 +463,12 @@ export function ServiceInfo({price}) {
       ))}
       <p className="p-3 text-xs text-muted">
         Sold by:{' '}
-        <span className="font-semibold text-ink">
+        <InfoButton
+          panel="soldBy"
+          className="font-semibold text-ink underline decoration-dotted underline-offset-2"
+        >
           {PDP_SERVICE_INFO.soldBy}
-        </span>
+        </InfoButton>
       </p>
     </section>
   );

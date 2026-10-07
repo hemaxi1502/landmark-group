@@ -3,6 +3,7 @@ import {Link, useNavigate} from 'react-router';
 import {Icon} from '~/components/ui/Icon';
 import {Modal} from '~/components/ui/Modal';
 import {withWidth} from '~/components/home/parts';
+import {SizeChart} from '~/components/pdp/SizeChart';
 const COLOUR_NAMES = ['color', 'colour'];
 /**
  * PDP · Colour Swatches + Size Selector (+ Size Guide popup).
@@ -12,7 +13,7 @@ const COLOUR_NAMES = ['color', 'colour'];
  * Option values that would change product render as real links for SEO;
  * the rest update the URL search params without a navigation.
  */
-export function ProductOptions({options, sizeChartUrl}) {
+export function ProductOptions({options, sizeChartUrl, sizeChartKind}) {
   return (
     <div className="space-y-5">
       {options.map((option) => {
@@ -31,7 +32,11 @@ export function ProductOptions({options, sizeChartUrl}) {
                 <span className="text-muted">{selected?.name}</span>
               </span>
               {!isColour && /size/i.test(option.name) && (
-                <SizeGuide chartUrl={sizeChartUrl} />
+                <SizeGuide
+                  chartUrl={sizeChartUrl}
+                  kind={sizeChartKind}
+                  selectedSize={selected?.name}
+                />
               )}
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -137,8 +142,11 @@ function ColourSwatch({value}) {
     </button>
   );
 }
-/** Size Guide popup. Shows the product's `custom.size_chart` image when present. */
-function SizeGuide({chartUrl}) {
+/**
+ * Size Guide popup. Shows the product's `custom.size_chart` image when
+ * present, otherwise the standard chart for its category (SizeChart.jsx).
+ */
+function SizeGuide({chartUrl, kind, selectedSize}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -163,10 +171,7 @@ function SizeGuide({chartUrl}) {
         {chartUrl ? (
           <img src={chartUrl} alt="Size chart" className="w-full" />
         ) : (
-          <p className="text-sm text-muted">
-            Size chart coming soon. Add an image to this product&apos;s{' '}
-            <code>custom.size_chart</code> metafield to show it here.
-          </p>
+          <SizeChart kind={kind} selectedSize={selectedSize} />
         )}
       </Modal>
     </>

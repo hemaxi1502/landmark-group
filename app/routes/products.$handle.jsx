@@ -14,6 +14,7 @@ import {SPEC_METAFIELDS} from '~/lib/site-config';
 import {menuItemUrl, parseMenuTitle} from '~/lib/menu';
 import {useLocalProductList} from '~/lib/local-list';
 import {Breadcrumb} from '~/components/ui/Breadcrumb';
+import {sizeChartKind} from '~/components/pdp/SizeChart';
 import {Icon} from '~/components/ui/Icon';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {useAside} from '~/components/Aside';
@@ -149,7 +150,14 @@ export default function Product() {
 
           <OffersCarousel />
 
-          <ProductOptions options={productOptions} sizeChartUrl={sizeChart} />
+          <ProductOptions
+            options={productOptions}
+            sizeChartUrl={sizeChart}
+            sizeChartKind={sizeChartKind({
+              title: product.title,
+              collections: product.collections.nodes,
+            })}
+          />
 
           <Suspense fallback={null}>
             <Await resolve={stock} errorElement={null}>

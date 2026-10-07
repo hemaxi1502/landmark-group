@@ -1,8 +1,9 @@
 import {useEffect, useRef} from 'react';
+import {createPortal} from 'react-dom';
 /**
  * Accessible modal: Escape closes, backdrop is a real button, focus moves
  * into the dialog on open and returns to the trigger on close, page scroll
- * is locked while open.
+ * is locked while open. Rendered in a portal on <body>.
  */
 export function Modal({
   open,
@@ -27,10 +28,12 @@ export function Modal({
       previous?.focus();
     };
   }, [open, onClose]);
-  if (!open) return null;
-  return (
+  if (!open || typeof document === 'undefined') return null;
+  // Rendered at <body> so it sits above the sticky header and can be opened
+  // from inside inline text (a <p>) without invalid nesting.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-label={label}
@@ -45,6 +48,7 @@ export function Modal({
       <div ref={panel} tabIndex={-1} className={`${className} outline-none`}>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
