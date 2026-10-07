@@ -171,3 +171,34 @@ export const FOOTER_CONFIG = {
     },
   ],
 };
+
+/**
+ * Lifestyle pages the demo doesn't rebuild. Used as the destination for
+ * header/top-bar/menu items whose Shopify entry has no URL.
+ * TODO(client): swap for in-store pages if these get built in Hydrogen.
+ */
+export const STORE_LINKS = {
+  apps: 'https://www.lifestylestores.com/in/en/apps',
+  storeLocator: 'https://www.lifestylestores.com/in/en/storelocator',
+  help: 'https://helpin.lifestylestores.com/support/home',
+  giftCard: 'https://www.lifestylestores.com/in/en/c/lifestylegiftcard',
+};
+
+const LABEL_LINKS = [
+  [/download.*app|our apps/i, STORE_LINKS.apps],
+  [/store locator/i, STORE_LINKS.storeLocator],
+  [/^help|help ?cent|feedback|contact/i, STORE_LINKS.help],
+  [/gift ?card/i, STORE_LINKS.giftCard],
+  [/legal|policies|terms/i, '/policies'],
+];
+
+/** URL for a link that has none set in Shopify, matched by its label. */
+export function linkForLabel(label = '') {
+  return LABEL_LINKS.find(([re]) => re.test(label))?.[1] ?? null;
+}
+
+/** A Shopify URL value, or null when it's empty or just "#". */
+export function realUrl(url) {
+  const u = (url ?? '').trim();
+  return !u || u === '#' || u.endsWith('/#') ? null : u;
+}

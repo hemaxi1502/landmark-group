@@ -6,6 +6,9 @@ import { AnnouncementBar } from '~/components/AnnouncementBar';
 import { SearchSuggestPanel, useSearchSuggest, useGoToSearch } from '~/components/search/SearchSuggest';
 import { DesktopMegaMenu, MobileSubmenuList } from '~/components/MegaMenu';
 import { useLocalProductList } from '~/lib/local-list';
+import { AccountLink } from '~/components/AccountLink';
+import { linkForLabel, realUrl } from '~/lib/site-config';
+import { isValidPincode, usePincode } from '~/lib/pincode';
 
 const POPULAR_SEARCHES = [
   "Melange Kurta Set Women", "watch", "tops for women",
@@ -122,7 +125,7 @@ const TopBar = ({ topBar }) => {
     const fields = node.fields || [];
     return {
       text: getFieldValue(fields, ['text']) || '',
-      url: getFieldValue(fields, ['url']) || '#',
+      url: realUrl(getFieldValue(fields, ['url'])),
       iconUrl: fields.find(f => f.key === 'icon')?.reference?.image?.url || '',
       hoverText: parseRichText(getFieldValue(fields, ['hover_text']))
     };
@@ -151,9 +154,9 @@ const TopBar = ({ topBar }) => {
 
   const defaultRight = [
     { text: 'Delivering To', iconUrl: 'svg_delivering' },
-    { text: 'Download Our Apps', url: '#' },
-    { text: 'Store Locator', url: '#' },
-    { text: 'Help', url: '#' }
+    { text: 'Download Our Apps' },
+    { text: 'Store Locator' },
+    { text: 'Help' }
   ];
 
   if (leftSideLinks.length === 0) {
@@ -206,9 +209,13 @@ const TopBar = ({ topBar }) => {
                 ) : link.iconUrl ? (
                   <img src={link.iconUrl} alt={link.text} className="w-[18px] h-[19px] object-contain" />
                 ) : null}
-                <a href={link.url} className={`text-[12px] font-bold text-[#FFFFFF] ${link.iconUrl || defaultRight[index]?.iconUrl === 'svg_delivering' ? 'ml-[4px]' : ''} hover:underline`}>
-                  {link.text}
-                </a>
+                {/delivering/i.test(link.text) ? (
+                  <DeliveringTo label={link.text} />
+                ) : (
+                  <OutLink href={link.url ?? linkForLabel(link.text)} className={`text-[12px] font-bold text-[#FFFFFF] ${link.iconUrl || defaultRight[index]?.iconUrl === 'svg_delivering' ? 'ml-[4px]' : ''} hover:underline`}>
+                    {link.text}
+                  </OutLink>
+                )}
               </div>
             </div>
           ))}
@@ -254,7 +261,6 @@ const MainHeader = ({ cart, isScrolled, metaobject }) => {
   const popularSearches = popularSearchesText.split(',').map(s => s.trim()).filter(Boolean);
 
   const signInText = getFieldValue(fields, ['sign_in_text']) || "SIGN UP / SIGN IN";
-  const signInLink = getFieldValue(fields, ['sign_in_link']) || "/account";
 
   const favoriteIconUrl = getRefUrl('favorite_icon');
   const favoriteText = getFieldValue(fields, ['favorite_text']) || "Favorites";
@@ -285,11 +291,12 @@ const MainHeader = ({ cart, isScrolled, metaobject }) => {
       parsed.children?.forEach(p => {
         p.children?.forEach(c => {
           if (c.type === 'link') {
-            links.push({ text: c.children?.[0]?.value || '', url: c.url || '#' });
+            const text = (c.children?.[0]?.value || '').replace(/,\s*$/, '').trim();
+            links.push({ text, url: realUrl(c.url) ?? linkForLabel(text) });
           } else if (c.type === 'text' && c.value.trim()) {
             // If it's just comma separated text in rich text
             c.value.split(',').forEach(text => {
-              if (text.trim()) links.push({ text: text.trim(), url: '#' });
+              if (text.trim()) links.push({ text: text.trim(), url: linkForLabel(text) });
             });
           }
         });
@@ -360,11 +367,10 @@ const MainHeader = ({ cart, isScrolled, metaobject }) => {
 
         {/* Right Side CTAs */}
         <div className="flex items-center gap-4 lg:gap-8 h-full">
-          <NavLink to={signInLink} prefetch="intent" className="hidden lg:block">
-            <button className="bg-[#FAA619] text-[#FFFFFF] px-[16px] py-[9px] border border-[#faa619] font-medium text-[14px] rounded-[2px] hover:opacity-90 transition-opacity uppercase cursor-pointer">
-              {signInText}
-            </button>
-          </NavLink>
+          <AccountLink
+            signInText={signInText}
+            className="hidden lg:block bg-[#FAA619] text-[#FFFFFF] px-[16px] py-[9px] border border-[#faa619] font-medium text-[14px] rounded-[2px] hover:opacity-90 transition-opacity uppercase cursor-pointer"
+          />
 
           {/* Mobile Scrolled Search Icon */}
           {isScrolled && (
@@ -404,7 +410,7 @@ const MainHeader = ({ cart, isScrolled, metaobject }) => {
                   <ul className="py-2 text-[13px] text-[#292D35] flex flex-col text-left">
                     {moreLinks.map((link, idx) => (
                       <li key={`more-${idx}`} className="px-5 py-2.5 hover:text-[#FAA619] hover:underline cursor-pointer transition-colors leading-[1.4]">
-                        <a href={link.url} className="block w-full">{link.text}</a>
+                        <OutLink href={link.url} className="block w-full">{link.text}</OutLink>
                       </li>
                     ))}
                   </ul>
@@ -613,9 +619,11 @@ export function HeaderMenu({
           )}
 
           <div className="mt-2 flex flex-col">
-             <NavLink to="/account" className="mx-4 my-2 text-center bg-white border border-gray-200 text-[#FAA619] py-[10px] rounded-[2px] font-semibold text-[14px]" onClick={close}>
-               Sign Up / Sign In
-             </NavLink>
+             <AccountLink
+               signInText="Sign Up / Sign In"
+               className="mx-4 my-2 text-center bg-white border border-gray-200 text-[#FAA619] py-[10px] rounded-[2px] font-semibold text-[14px]"
+               onClick={close}
+             />
              <div className="px-4 py-4 border-b border-gray-100 flex items-center gap-2 cursor-pointer hover:bg-gray-50">
                <span className="text-[14px]">Missing Size In Store</span>
                <span className="bg-[#292D35] text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-wider">NEW</span>
@@ -624,11 +632,11 @@ export function HeaderMenu({
                <span className="text-[14px]">In Store</span>
                <span className="bg-[#292D35] text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-wider">NEW</span>
              </div>
-             <NavLink to="/help" className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Help</NavLink>
-             <NavLink to="/apps" className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Download our Apps</NavLink>
-             <NavLink to="/store-locator" className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Store Locator</NavLink>
-             <NavLink to="/feedback" className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Feedback</NavLink>
-             <NavLink to="/legal" className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Legal</NavLink>
+             <OutLink href={linkForLabel('Help')} className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Help</OutLink>
+             <OutLink href={linkForLabel('Download our Apps')} className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Download our Apps</OutLink>
+             <OutLink href={linkForLabel('Store Locator')} className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Store Locator</OutLink>
+             <OutLink href={linkForLabel('Feedback')} className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Feedback</OutLink>
+             <OutLink href={linkForLabel('Legal')} className="px-4 py-4 border-b border-gray-100 text-[14px] hover:bg-gray-50" onClick={close}>Legal</OutLink>
           </div>
         </div>
       </nav>
@@ -687,6 +695,76 @@ function SearchToggle() {
     <button className="reset" onClick={() => open('search')}>
       Search
     </button>
+  );
+}
+
+/** Link that opens other sites in a new tab and renders plain text when there's no URL. */
+function OutLink({ href, className, children, onClick }) {
+  if (!href) return <span className={className}>{children}</span>;
+  const external = /^https?:\/\//.test(href);
+  return (
+    <a
+      href={href}
+      className={className}
+      onClick={onClick}
+      {...(external && { target: '_blank', rel: 'noopener noreferrer' })}
+    >
+      {children}
+    </a>
+  );
+}
+
+/**
+ * Top-bar "Delivering To": shows the saved pincode and lets the shopper set
+ * it (shared with the PDP delivery check).
+ */
+function DeliveringTo({ label }) {
+  const { pincode, setPincode } = usePincode();
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+  const submit = (e) => {
+    e.preventDefault();
+    if (!isValidPincode(value)) return setError('Enter a valid 6-digit pincode');
+    setPincode(value);
+    setOpen(false);
+  };
+  return (
+    <div className="relative ml-[4px]">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => { setValue(pincode); setError(''); setOpen((o) => !o); }}
+        className="text-[12px] font-bold text-[#FFFFFF] hover:underline"
+      >
+        {label}{pincode ? ` ${pincode}` : ''}
+      </button>
+      {open && (
+        <form
+          onSubmit={submit}
+          className="absolute right-0 top-full z-[100] mt-3 w-64 rounded-[2px] bg-white p-3 shadow-[0_2px_15px_rgba(0,0,0,0.15)]"
+        >
+          <label htmlFor="topbar-pincode" className="block text-[12px] font-semibold text-[#292D35]">
+            Enter your delivery pincode
+          </label>
+          <div className="mt-2 flex gap-2">
+            <input
+              id="topbar-pincode"
+              inputMode="numeric"
+              maxLength={6}
+              value={value}
+              onChange={(e) => setValue(e.target.value.replace(/\D/g, ''))}
+              className="min-w-0 flex-1 rounded-[2px] border border-gray-300 px-2 py-1.5 text-[13px] text-black"
+              placeholder="e.g. 400001"
+            />
+            <button type="submit" className="rounded-[2px] bg-[#FAA619] px-3 text-[12px] font-semibold text-white">
+              Apply
+            </button>
+          </div>
+          {error && <p className="mt-1 text-[11px] text-red-600">{error}</p>}
+        </form>
+      )}
+    </div>
   );
 }
 
