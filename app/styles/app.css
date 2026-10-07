@@ -7,8 +7,8 @@
   --color-dark: #000;
   --color-light: #fff;
   --page-width: 81rem;
-  --color-search-bg: #ECEDEB;
-  --color-main-header-bg: #F7F8F7;
+  --color-search-bg: #ecedeb;
+  --color-main-header-bg: #f7f8f7;
 }
 
 .page-width {
@@ -28,7 +28,9 @@ body {
 }
 
 body {
-  font-family: Figtree-Semibold, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family:
+    Figtree-Semibold, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji';
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -115,6 +117,9 @@ aside {
   background: var(--color-light);
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.3);
   height: 100vh;
+  height: 100dvh; /* mobile browsers: exclude the URL bar */
+  display: flex;
+  flex-direction: column;
   width: min(var(--aside-width), 85vw);
   position: fixed;
   left: calc(-1 * min(var(--aside-width), 85vw));
@@ -129,6 +134,7 @@ aside header {
   height: var(--header-height);
   justify-content: space-between;
   padding: 0 20px;
+  flex-shrink: 0;
 }
 
 aside header h3 {
@@ -152,8 +158,12 @@ aside header h2 {
   margin-top: 0;
 }
 
+/* Fill the space under the header; children decide what scrolls. */
 aside main {
   margin: 1rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 aside.no-header main {
@@ -194,7 +204,9 @@ aside li {
   position: fixed;
   right: 0;
   top: 0;
-  transition: opacity 400ms ease-in-out, visibility 400ms ease-in-out;
+  transition:
+    opacity 400ms ease-in-out,
+    visibility 400ms ease-in-out;
   visibility: hidden;
   z-index: 60;
 }

@@ -63,10 +63,16 @@ export function CartMain({layout, cart: originalCart}) {
 
   if (layout === 'aside') {
     return (
-      <section aria-label="Basket drawer" className="flex h-full flex-col">
+      // Only the item list scrolls; the totals and Checkout stay pinned at the bottom.
+      <section
+        aria-label="Basket drawer"
+        className="flex h-full min-h-0 flex-col"
+      >
         <FreeShippingNote />
-        <div className="flex-1 overflow-y-auto px-1">{lineList}</div>
-        <div className="border-t border-line pt-3">
+        <div className="min-h-[120px] flex-1 overflow-y-auto overscroll-contain px-1">
+          {lineList}
+        </div>
+        <div className="max-h-[65%] shrink-0 overflow-y-auto border-t border-line bg-white pt-3">
           <CartSummary cart={cart} layout="aside" />
         </div>
       </section>
