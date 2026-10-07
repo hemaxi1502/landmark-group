@@ -148,7 +148,7 @@ export function DesktopMegaMenu({
 }
 
 function MegaPanel({item, opts, onMouseEnter, onNavigate}) {
-  const {title, image} = parseMenuTitle(item.title);
+  const {title} = parseMenuTitle(item.title);
   const allPath = menuPath(item.url, opts);
   return (
     <div
@@ -209,15 +209,8 @@ function MegaPanel({item, opts, onMouseEnter, onNavigate}) {
           })}
         </ul>
 
-        {(image || allPath) && (
+        {allPath && (
           <div className="hidden w-44 shrink-0 lg:block">
-            {image && (
-              <img
-                src={image}
-                alt=""
-                className="aspect-square w-full rounded object-cover"
-              />
-            )}
             {allPath && (
               <NavLink
                 to={allPath}
