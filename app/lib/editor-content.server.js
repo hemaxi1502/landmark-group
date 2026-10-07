@@ -46,14 +46,25 @@ const NODES_QUERY = `
           key
           type
           value
-          reference {
-            ... on MediaImage { image { url } }
-          }
         }
       }
     }
   }
 `;
+
+// Images are loaded by id rather than through fields { reference }: resolving
+// every reference would also resolve collection_reference fields, which needs
+// the read_products scope the editor app doesn't have.
+const IMAGES_QUERY = `
+  query EditorImages($ids: [ID!]!) {
+    nodes(ids: $ids) {
+      ... on MediaImage { id image { url } }
+    }
+  }
+`;
+
+const METAOBJECT_GID = /^gid:\/\/shopify\/Metaobject\/\d+$/;
+const MEDIA_IMAGE_GID = /^gid:\/\/shopify\/MediaImage\/\d+$/;
 
 const UPDATE_FIELDS = `
   metaobject { id }
@@ -427,7 +438,10 @@ export async function loadEditorTree(env) {
     ...parseIds(fieldOf(h, 'mobile_banner')),
   ]);
   for (let depth = 0; depth < MAX_DEPTH && pending.length; depth++) {
-    const ids = [...new Set(pending)].filter((id) => !nodesById[id]);
+    // Only metaobjects are walked; mixed references may also point to collections.
+    const ids = [...new Set(pending)].filter(
+      (id) => METAOBJECT_GID.test(id) && !nodesById[id],
+    );
     pending = [];
     for (let i = 0; i < ids.length; i += 100) {
       const page = await adminGraphql(env, NODES_QUERY, {
@@ -440,7 +454,30 @@ export async function loadEditorTree(env) {
       }
     }
   }
+  await attachImages(env, Object.values(nodesById));
   return buildEditorTree(homeNodes, nodesById);
+}
+
+/** Fills `field.reference.image.url` on file_reference fields, as the tree expects. */
+async function attachImages(env, nodes) {
+  const fields = nodes.flatMap((n) =>
+    (n.fields ?? []).filter(
+      (f) => f.type === 'file_reference' && MEDIA_IMAGE_GID.test(f.value ?? ''),
+    ),
+  );
+  const ids = [...new Set(fields.map((f) => f.value))];
+  const urls = {};
+  for (let i = 0; i < ids.length; i += 100) {
+    const page = await adminGraphql(env, IMAGES_QUERY, {
+      ids: ids.slice(i, i + 100),
+    });
+    for (const img of page?.nodes ?? []) {
+      if (img?.id) urls[img.id] = img.image?.url ?? null;
+    }
+  }
+  for (const f of fields) {
+    f.reference = urls[f.value] ? {image: {url: urls[f.value]}} : null;
+  }
 }
 
 /** Applies updates in batches of 20 aliased metaobjectUpdate mutations. */
