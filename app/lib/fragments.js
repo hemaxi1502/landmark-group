@@ -352,6 +352,89 @@ export const FOOTER_QUERY = `#graphql
     homeLiving: menu(handle: "footer-home-living") {
       ...FooterMenu
     }
+    babyshop: menu(handle: "footer-babyshop") {
+      ...FooterMenu
+    }
+    more: menu(handle: "more") {
+      ...FooterMenu
+    }
+    help: menu(handle: "help") {
+      ...FooterMenu
+    }
+    footerMain: metaobject(handle: {type: "footer_main", handle: "footer-menu"}) {
+      contacts: field(key: "footer_contacts") {
+        references(first: 10) {
+          nodes {
+            ... on Metaobject {
+              id
+              handle
+              name: field(key: "name") {
+                value
+              }
+              contact: field(key: "contact") {
+                value
+              }
+              sortOrder: field(key: "sort_order") {
+                value
+              }
+            }
+          }
+        }
+      }
+      copyright: field(key: "footer_copyright") {
+        reference {
+          ... on Metaobject {
+            text: field(key: "copyright_text") {
+              value
+            }
+            logo: field(key: "logo") {
+              reference {
+                ... on MediaImage {
+                  image {
+                    url
+                    altText
+                    width
+                    height
+                  }
+                }
+              }
+            }
+            links: field(key: "footer_links") {
+              references(first: 10) {
+                nodes {
+                  ... on Metaobject {
+                    id
+                    handle
+                    text: field(key: "text") {
+                      value
+                    }
+                    sortOrder: field(key: "sort_order") {
+                      value
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    headerLogo: metaobjects(type: "main_header", first: 1) {
+      nodes {
+        logo: field(key: "logo") {
+          reference {
+            ... on MediaImage {
+              image {
+                url
+                altText
+                width
+                height
+              }
+            }
+          }
+        }
+      }
+    }
     shop {
       name
       privacyPolicy {

@@ -136,3 +136,38 @@ export const SPEC_METAFIELDS = [
   {key: 'care_instructions', label: 'Care Instructions'},
   {key: 'model_wears', label: 'Model Wears'},
 ];
+
+/**
+ * Footer pieces that have no Shopify source. Column links, contacts,
+ * copyright and the Terms/Privacy labels come from Shopify (footer-* menus
+ * and the footer_main metaobject).
+ * TODO(client): confirm the social profile URLs.
+ */
+export const FOOTER_CONFIG = {
+  subscribe: {
+    heading: 'Subscribe to our awesome emails.',
+    text: 'Get our latest offers and news straight in your inbox.',
+    placeholder: 'Please enter an email address',
+    button: 'Subscribe',
+  },
+  apps: {
+    heading: 'Download our apps',
+    text: 'Shop our products and offers on-the-go.',
+    appStore: 'https://apps.apple.com/in/app/id1180884618',
+    googlePlay: 'https://www.lifestylestores.com/in/en/apps',
+  },
+  helpCentreUrl: 'https://helpin.lifestylestores.com/support/home',
+  socials: [
+    {
+      name: 'Facebook',
+      icon: 'facebook',
+      url: 'https://www.facebook.com/LifestyleStores',
+    },
+    {name: 'X', icon: 'x', url: 'https://x.com/LifestyleStores'},
+    {
+      name: 'Instagram',
+      icon: 'instagram',
+      url: 'https://www.instagram.com/lifestylestores/',
+    },
+  ],
+};

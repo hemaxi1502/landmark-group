@@ -1560,6 +1560,79 @@ export type FooterQuery = {
       items: Array<Pick<StorefrontAPI.MenuItem, 'id' | 'title' | 'url'>>;
     }
   >;
+  babyshop?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Menu, 'id' | 'title'> & {
+      items: Array<Pick<StorefrontAPI.MenuItem, 'id' | 'title' | 'url'>>;
+    }
+  >;
+  more?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Menu, 'id' | 'title'> & {
+      items: Array<Pick<StorefrontAPI.MenuItem, 'id' | 'title' | 'url'>>;
+    }
+  >;
+  help?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Menu, 'id' | 'title'> & {
+      items: Array<Pick<StorefrontAPI.MenuItem, 'id' | 'title' | 'url'>>;
+    }
+  >;
+  footerMain?: StorefrontAPI.Maybe<{
+    contacts?: StorefrontAPI.Maybe<{
+      references?: StorefrontAPI.Maybe<{
+        nodes: Array<
+          Pick<StorefrontAPI.Metaobject, 'id' | 'handle'> & {
+            name?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.MetaobjectField, 'value'>
+            >;
+            contact?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.MetaobjectField, 'value'>
+            >;
+            sortOrder?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.MetaobjectField, 'value'>
+            >;
+          }
+        >;
+      }>;
+    }>;
+    copyright?: StorefrontAPI.Maybe<{
+      reference?: StorefrontAPI.Maybe<{
+        text?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.MetaobjectField, 'value'>
+        >;
+        logo?: StorefrontAPI.Maybe<{
+          reference?: StorefrontAPI.Maybe<{
+            image?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+            >;
+          }>;
+        }>;
+        links?: StorefrontAPI.Maybe<{
+          references?: StorefrontAPI.Maybe<{
+            nodes: Array<
+              Pick<StorefrontAPI.Metaobject, 'id' | 'handle'> & {
+                text?: StorefrontAPI.Maybe<
+                  Pick<StorefrontAPI.MetaobjectField, 'value'>
+                >;
+                sortOrder?: StorefrontAPI.Maybe<
+                  Pick<StorefrontAPI.MetaobjectField, 'value'>
+                >;
+              }
+            >;
+          }>;
+        }>;
+      }>;
+    }>;
+  }>;
+  headerLogo: {
+    nodes: Array<{
+      logo?: StorefrontAPI.Maybe<{
+        reference?: StorefrontAPI.Maybe<{
+          image?: StorefrontAPI.Maybe<
+            Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+          >;
+        }>;
+      }>;
+    }>;
+  };
   shop: Pick<StorefrontAPI.Shop, 'name'> & {
     privacyPolicy?: StorefrontAPI.Maybe<
       Pick<StorefrontAPI.ShopPolicy, 'handle' | 'title'>
@@ -2189,6 +2262,19 @@ export type CatalogQuery = {
       'hasPreviousPage' | 'hasNextPage' | 'startCursor' | 'endCursor'
     >;
   };
+};
+
+export type NewsletterSubscribeMutationVariables = StorefrontAPI.Exact<{
+  input: StorefrontAPI.CustomerCreateInput;
+}>;
+
+export type NewsletterSubscribeMutation = {
+  customerCreate?: StorefrontAPI.Maybe<{
+    customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>;
+    customerUserErrors: Array<
+      Pick<StorefrontAPI.CustomerUserError, 'code' | 'message'>
+    >;
+  }>;
 };
 
 export type PageQueryVariables = StorefrontAPI.Exact<{
@@ -2845,7 +2931,7 @@ interface GeneratedQueryTypes {
     return: HeaderQuery;
     variables: HeaderQueryVariables;
   };
-  '#graphql\n  fragment FooterMenu on Menu {\n    id\n    title\n    items {\n      id\n      title\n      url\n    }\n  }\n  query Footer($country: CountryCode, $language: LanguageCode)\n  @inContext(language: $language, country: $country) {\n    women: menu(handle: "footer-women") {\n      ...FooterMenu\n    }\n    men: menu(handle: "footer-men") {\n      ...FooterMenu\n    }\n    kids: menu(handle: "footer-kids") {\n      ...FooterMenu\n    }\n    beauty: menu(handle: "footer-beauty") {\n      ...FooterMenu\n    }\n    footwear: menu(handle: "footer-footwear") {\n      ...FooterMenu\n    }\n    bags: menu(handle: "footer-bags") {\n      ...FooterMenu\n    }\n    homeLiving: menu(handle: "footer-home-living") {\n      ...FooterMenu\n    }\n    shop {\n      name\n      privacyPolicy {\n        handle\n        title\n      }\n      refundPolicy {\n        handle\n        title\n      }\n      shippingPolicy {\n        handle\n        title\n      }\n      termsOfService {\n        handle\n        title\n      }\n    }\n  }\n': {
+  '#graphql\n  fragment FooterMenu on Menu {\n    id\n    title\n    items {\n      id\n      title\n      url\n    }\n  }\n  query Footer($country: CountryCode, $language: LanguageCode)\n  @inContext(language: $language, country: $country) {\n    women: menu(handle: "footer-women") {\n      ...FooterMenu\n    }\n    men: menu(handle: "footer-men") {\n      ...FooterMenu\n    }\n    kids: menu(handle: "footer-kids") {\n      ...FooterMenu\n    }\n    beauty: menu(handle: "footer-beauty") {\n      ...FooterMenu\n    }\n    footwear: menu(handle: "footer-footwear") {\n      ...FooterMenu\n    }\n    bags: menu(handle: "footer-bags") {\n      ...FooterMenu\n    }\n    homeLiving: menu(handle: "footer-home-living") {\n      ...FooterMenu\n    }\n    babyshop: menu(handle: "footer-babyshop") {\n      ...FooterMenu\n    }\n    more: menu(handle: "more") {\n      ...FooterMenu\n    }\n    help: menu(handle: "help") {\n      ...FooterMenu\n    }\n    footerMain: metaobject(handle: {type: "footer_main", handle: "footer-menu"}) {\n      contacts: field(key: "footer_contacts") {\n        references(first: 10) {\n          nodes {\n            ... on Metaobject {\n              id\n              handle\n              name: field(key: "name") {\n                value\n              }\n              contact: field(key: "contact") {\n                value\n              }\n              sortOrder: field(key: "sort_order") {\n                value\n              }\n            }\n          }\n        }\n      }\n      copyright: field(key: "footer_copyright") {\n        reference {\n          ... on Metaobject {\n            text: field(key: "copyright_text") {\n              value\n            }\n            logo: field(key: "logo") {\n              reference {\n                ... on MediaImage {\n                  image {\n                    url\n                    altText\n                    width\n                    height\n                  }\n                }\n              }\n            }\n            links: field(key: "footer_links") {\n              references(first: 10) {\n                nodes {\n                  ... on Metaobject {\n                    id\n                    handle\n                    text: field(key: "text") {\n                      value\n                    }\n                    sortOrder: field(key: "sort_order") {\n                      value\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    headerLogo: metaobjects(type: "main_header", first: 1) {\n      nodes {\n        logo: field(key: "logo") {\n          reference {\n            ... on MediaImage {\n              image {\n                url\n                altText\n                width\n                height\n              }\n            }\n          }\n        }\n      }\n    }\n    shop {\n      name\n      privacyPolicy {\n        handle\n        title\n      }\n      refundPolicy {\n        handle\n        title\n      }\n      shippingPolicy {\n        handle\n        title\n      }\n      termsOfService {\n        handle\n        title\n      }\n    }\n  }\n': {
     return: FooterQuery;
     variables: FooterQueryVariables;
   };
@@ -2923,7 +3009,12 @@ interface GeneratedQueryTypes {
   };
 }
 
-interface GeneratedMutationTypes {}
+interface GeneratedMutationTypes {
+  '#graphql\n  mutation NewsletterSubscribe($input: CustomerCreateInput!) {\n    customerCreate(input: $input) {\n      customer {\n        id\n      }\n      customerUserErrors {\n        code\n        message\n      }\n    }\n  }\n': {
+    return: NewsletterSubscribeMutation;
+    variables: NewsletterSubscribeMutationVariables;
+  };
+}
 
 declare module '@shopify/hydrogen' {
   interface StorefrontQueries extends GeneratedQueryTypes {}
