@@ -7,6 +7,7 @@ import {
   blockLabel,
   missingFor,
   slugify,
+  SORT_OPTIONS,
 } from './page-builder.js';
 
 /**
@@ -22,9 +23,17 @@ const GID = {
   collection: /^gid:\/\/shopify\/Collection\/\d+$/,
   image: /^gid:\/\/shopify\/MediaImage\/\d+$/,
   video: /^gid:\/\/shopify\/Video\/\d+$/,
+  product: /^gid:\/\/shopify\/Product\/\d+$/,
   metaobject: /^gid:\/\/shopify\/Metaobject\/\d+$/,
 };
-const MAX = {heading: 255, text: 2000, link: 500, title: 120, description: 320};
+const MAX = {
+  heading: 255,
+  text: 2000,
+  link: 500,
+  title: 120,
+  description: 320,
+  items: 4000,
+};
 const MAX_BLOCKS = 40;
 
 export async function listLayouts(env) {
@@ -85,6 +94,10 @@ function toEditorBlock(node) {
       image: fieldValue(node, 'image'),
       mobile_image: fieldValue(node, 'mobile_image'),
       video: fieldValue(node, 'video'),
+      items: fieldValue(node, 'items'),
+      ends_at: fieldValue(node, 'ends_at'),
+      product: fieldValue(node, 'product'),
+      sort: fieldValue(node, 'sort'),
       home_section: fieldValue(node, 'home_section'),
     },
     imageUrls: {},
@@ -172,6 +185,7 @@ function cleanField(key, raw, n, errors, type) {
   switch (key) {
     case 'heading':
     case 'text':
+    case 'items':
     case 'link': {
       const s = String(raw ?? '').trim();
       if (s.length > MAX[key]) errors.push(`Block ${n}: ${label} is too long.`);
@@ -219,6 +233,25 @@ function cleanField(key, raw, n, errors, type) {
         return '';
       }
       return raw;
+    case 'ends_at': {
+      if (!raw) return '';
+      const t = new Date(raw);
+      if (Number.isNaN(t.getTime())) {
+        errors.push(`Block ${n}: ${label} is not a valid date.`);
+        return '';
+      }
+      return t.toISOString();
+    }
+    case 'product':
+      if (!raw) return '';
+      if (!GID.product.test(raw)) {
+        errors.push(`Block ${n}: pick a product from the list.`);
+        return '';
+      }
+      return raw;
+    case 'sort':
+      if (!raw) return '';
+      return SORT_OPTIONS[raw] ? raw : '';
     case 'home_section':
       if (!raw) return '';
       if (!GID.metaobject.test(raw)) {

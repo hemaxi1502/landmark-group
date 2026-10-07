@@ -31,7 +31,31 @@ export const FIELD_INFO = {
   mobile_image: {label: 'Image (mobile)', kind: 'image'},
   video: {label: 'Video (optional)', kind: 'video'},
   home_section: {label: 'Homepage section', kind: 'home_section'},
+  items: {label: 'List', kind: 'lines'},
+  ends_at: {label: 'Ends at', kind: 'datetime'},
+  product: {label: 'Product', kind: 'product'},
+  sort: {label: 'Sort by', kind: 'select'},
 };
+
+/** Product order for product blocks (sort field). */
+export const SORT_OPTIONS = {
+  best_selling: {
+    label: 'Best sellers',
+    sortKey: 'BEST_SELLING',
+    reverse: false,
+  },
+  newest: {label: 'Newest first', sortKey: 'CREATED', reverse: true},
+  price_asc: {label: 'Price: low to high', sortKey: 'PRICE', reverse: false},
+  price_desc: {label: 'Price: high to low', sortKey: 'PRICE', reverse: true},
+};
+
+/** Trust badges shown when the block's list is left empty. */
+export const DEFAULT_TRUST_BADGES = [
+  'Free shipping | On all orders',
+  'Easy 7-day returns | Online or in store',
+  'Cash on delivery | Pay when it arrives',
+  '100% original | Sold by Landmark Online India',
+].join('\n');
 
 export const BLOCK_TYPES = {
   banner: {
@@ -44,13 +68,13 @@ export const BLOCK_TYPES = {
   product_carousel: {
     label: 'Product carousel',
     description: 'A swipeable row of products from a collection.',
-    fields: ['heading', 'collection', 'count'],
+    fields: ['heading', 'collection', 'sort', 'count'],
     defaults: {count: 12},
   },
   product_grid: {
     label: 'Product grid',
     description: 'Products from a collection in a grid, with "View all".',
-    fields: ['heading', 'collection', 'count'],
+    fields: ['heading', 'collection', 'sort', 'count'],
     defaults: {count: 8},
   },
   category_tiles: {
@@ -85,7 +109,114 @@ export const BLOCK_TYPES = {
       'The full automatic top menu category layout: hero, sub categories, best sellers, brands, prices.',
     fields: ['collection'],
   },
+
+  /* ---- Conversion blocks ---- */
+  offer_codes: {
+    label: 'Offers & coupons',
+    group: 'conversion',
+    description: 'Coupon codes with a one-tap Copy button.',
+    fields: ['heading', 'items'],
+    labels: {items: 'Coupons'},
+    hints: {
+      items:
+        'One coupon per line: CODE | what it gives. e.g. SAVE200 | ₹200 off on ₹1,999+. Codes must exist in Shopify → Discounts.',
+    },
+  },
+  countdown: {
+    label: 'Sale countdown',
+    group: 'conversion',
+    description:
+      'Live timer to a real sale end time. Hides itself when the time is up.',
+    fields: ['heading', 'text', 'ends_at', 'link'],
+    labels: {link: 'Button link'},
+  },
+  trust_badges: {
+    label: 'Trust badges',
+    group: 'conversion',
+    description: 'Free shipping, easy returns, COD, 100% original… in a row.',
+    fields: ['items'],
+    labels: {items: 'Badges'},
+    hints: {
+      items:
+        'One per line: Title | short line. Leave empty for the standard four.',
+    },
+  },
+  deals: {
+    label: 'Deals',
+    group: 'conversion',
+    description:
+      'Products with the biggest real discounts (MRP vs price), highest % off first.',
+    fields: ['heading', 'collection', 'count'],
+    labels: {collection: 'Collection (optional, all products if empty)'},
+    defaults: {count: 12},
+  },
+  recently_viewed: {
+    label: 'Recently viewed',
+    group: 'conversion',
+    description:
+      "The shopper's own recently viewed products. Hidden for new visitors.",
+    fields: ['heading'],
+  },
+  product_spotlight: {
+    label: 'Product spotlight',
+    group: 'conversion',
+    description:
+      'One hero product with photos, price, sizes and Add to basket.',
+    fields: ['product', 'heading', 'text'],
+    labels: {heading: 'Tagline (optional)', text: 'Why buy it (optional)'},
+  },
+  newsletter: {
+    label: 'Email sign-up',
+    group: 'conversion',
+    description: 'Collects email subscribers (saved in Shopify → Customers).',
+    fields: ['heading', 'text'],
+  },
+  faq: {
+    label: 'FAQ',
+    group: 'conversion',
+    description:
+      'Questions and answers that open on tap — answer sizing, delivery and return doubts before they cost a sale.',
+    fields: ['heading', 'items'],
+    labels: {items: 'Questions'},
+    hints: {items: 'One per line: Question | Answer'},
+  },
+  image_text: {
+    label: 'Image with text',
+    group: 'conversion',
+    description: 'A picture beside a heading, story and button.',
+    fields: ['image', 'heading', 'text', 'link'],
+    labels: {image: 'Image', link: 'Button link'},
+  },
 };
+
+/** "A | B" lines → [{a, b}]; blank lines dropped. */
+export function parseLines(text) {
+  return String(text ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const i = line.indexOf('|');
+      return i === -1
+        ? {a: line, b: ''}
+        : {a: line.slice(0, i).trim(), b: line.slice(i + 1).trim()};
+    })
+    .filter((x) => x.a);
+}
+
+/** Discounted products only (MRP above price), biggest % off first. */
+export function rankDeals(products) {
+  return products
+    .map((p) => {
+      const price = Number(p.priceRange?.minVariantPrice?.amount);
+      const mrp = Number(p.compareAtPriceRange?.minVariantPrice?.amount);
+      const off = mrp > price && price > 0 ? 1 - price / mrp : 0;
+      return {p, off};
+    })
+    .filter((x) => x.off >= 0.01 && x.p.availableForSale !== false)
+    .sort((a, b) => b.off - a.off)
+    .map((x) => x.p);
+}
 
 export const blockLabel = (kind) => BLOCK_TYPES[kind]?.label ?? kind;
 
@@ -145,6 +276,28 @@ export function missingFor(kind, v = {}) {
     case 'price_bands':
     case 'department':
       return v.collection ? '' : 'Pick a collection.';
+    case 'offer_codes':
+      return parseLines(v.items).some((x) => x.b)
+        ? ''
+        : 'Add at least one coupon as CODE | what it gives.';
+    case 'countdown':
+      // A past end time isn't blocking: the timer simply hides itself, and
+      // the page must stay editable after the sale ends.
+      return v.ends_at ? '' : 'Set when the sale ends.';
+    case 'product_spotlight':
+      return v.product ? '' : 'Pick a product.';
+    case 'faq':
+      return parseLines(v.items).some((x) => x.b)
+        ? ''
+        : 'Add at least one line as Question | Answer.';
+    case 'image_text':
+      if (!v.image) return 'Upload an image.';
+      return v.heading || v.text ? '' : 'Write a heading or some text.';
+    case 'trust_badges':
+    case 'deals':
+    case 'recently_viewed':
+    case 'newsletter':
+      return '';
     default:
       return 'Unknown block type.';
   }
@@ -202,6 +355,12 @@ export function parseBlock(node) {
     video: videoOf(value(f, 'video')?.reference),
     mobileImage: imageOf(value(f, 'mobile_image')?.reference),
     homeSection: value(f, 'home_section')?.reference?.handle ?? null,
+    items: value(f, 'items')?.value ?? '',
+    endsAt: value(f, 'ends_at')?.value ?? null,
+    product: value(f, 'product')?.reference?.handle ?? null,
+    sort: SORT_OPTIONS[value(f, 'sort')?.value]
+      ? value(f, 'sort').value
+      : 'best_selling',
   };
 }
 
@@ -222,6 +381,21 @@ export function isRenderable(block) {
       return Boolean(block.heading || block.text);
     case 'home_section':
       return Boolean(block.homeSection);
+    case 'offer_codes':
+      return parseLines(block.items).some((x) => x.b);
+    case 'faq':
+      return parseLines(block.items).some((x) => x.b);
+    case 'countdown':
+      return Boolean(block.endsAt) && new Date(block.endsAt) > new Date();
+    case 'product_spotlight':
+      return Boolean(block.product);
+    case 'image_text':
+      return Boolean(block.image && (block.heading || block.text));
+    case 'trust_badges':
+    case 'deals':
+    case 'recently_viewed':
+    case 'newsletter':
+      return true;
     default:
       return false;
   }

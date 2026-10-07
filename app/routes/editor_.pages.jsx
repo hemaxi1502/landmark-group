@@ -25,10 +25,13 @@ import {
   BLOCK_TYPES,
   FIELD_INFO,
   PAGE_KINDS,
+  DEFAULT_TRUST_BADGES,
+  SORT_OPTIONS,
   blockLabel,
   layoutPath,
   missingFor,
   pageKindOf,
+  parseLines,
 } from '~/lib/page-builder';
 import {
   EditorTabs,
@@ -117,7 +120,13 @@ function toOptions(d) {
       return {handle, title: clean(top.title), subs};
     })
     .filter(Boolean);
-  return {collections, homeSections, topCategories};
+  const products = (d?.products?.nodes ?? []).map((p) => ({
+    id: p.id,
+    title: p.title,
+    vendor: p.vendor,
+    image: p.featuredImage?.url ?? null,
+  }));
+  return {collections, homeSections, topCategories, products};
 }
 
 /** @param {import('react-router').ActionFunctionArgs} */
@@ -461,7 +470,20 @@ function emptyValues(kind) {
     mobile_image: '',
     video: '',
     home_section: '',
+    items: '',
+    ends_at: '',
+    product: '',
+    sort: '',
   };
+}
+
+/** ISO date → value for <input type="datetime-local"> in the browser's zone. */
+function toLocalInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function PageEditor({d, save}) {
@@ -711,7 +733,33 @@ function summary(block, d) {
         'Pick a section'
       );
     case 'text':
+    case 'newsletter':
+    case 'image_text':
       return v.heading || 'No heading yet';
+    case 'offer_codes':
+    case 'faq':
+    case 'trust_badges': {
+      const n = parseLines(v.items).length;
+      if (block.kind === 'trust_badges' && !n) return 'Standard 4 badges';
+      const noun = {
+        offer_codes: 'coupon',
+        faq: 'question',
+        trust_badges: 'badge',
+      }[block.kind];
+      return `${n} ${noun}${n === 1 ? '' : 's'}`;
+    }
+    case 'countdown':
+      return v.ends_at
+        ? `Ends ${new Date(v.ends_at).toLocaleString('en-IN', {dateStyle: 'medium', timeStyle: 'short'})}`
+        : 'Set an end time';
+    case 'deals':
+      return coll ? `Deals in ${coll}` : 'Deals across all products';
+    case 'recently_viewed':
+      return v.heading || 'Recently viewed';
+    case 'product_spotlight':
+      return (
+        d.products.find((p) => p.id === v.product)?.title ?? 'Pick a product'
+      );
     default:
       return coll
         ? `${v.heading ? `${v.heading} · ` : ''}${coll}`
@@ -833,6 +881,7 @@ function BlockCard({
               d={d}
               onValue={onValue}
               onUpload={onUpload}
+              hint={type.hints?.[field]}
             />
           ))}
         </div>
@@ -841,21 +890,88 @@ function BlockCard({
   );
 }
 
-function FieldInput({field, label, block, d, onValue, onUpload}) {
+function FieldInput({field, label, block, d, onValue, onUpload, hint}) {
   const info = FIELD_INFO[field];
   const v = block.values[field];
   const id = `${block.key}-${field}`;
+  const help = hint ?? info.hint;
   const wrap = (input, wide) => (
     <div className={wide ? 'md:col-span-2' : undefined}>
       <label htmlFor={id} className="mb-1 block text-sm font-semibold">
         {label}
       </label>
       {input}
-      {info.hint && <p className="mt-1 text-xs text-muted">{info.hint}</p>}
+      {help && <p className="mt-1 text-xs text-muted">{help}</p>}
     </div>
   );
 
   switch (info.kind) {
+    case 'lines':
+      return wrap(
+        <textarea
+          id={id}
+          value={v}
+          rows={5}
+          maxLength={4000}
+          placeholder={
+            field === 'items' && block.kind === 'trust_badges'
+              ? DEFAULT_TRUST_BADGES
+              : undefined
+          }
+          onChange={(e) => onValue(field, e.target.value)}
+          className={`${inputCls} h-auto py-2 font-mono text-[13px]`}
+        />,
+        true,
+      );
+    case 'datetime': {
+      const past = v && new Date(v).getTime() <= Date.now();
+      return wrap(
+        <>
+          <input
+            id={id}
+            type="datetime-local"
+            value={toLocalInput(v)}
+            onChange={(e) =>
+              onValue(
+                field,
+                e.target.value ? new Date(e.target.value).toISOString() : '',
+              )
+            }
+            className={`${inputCls} max-w-[16rem]`}
+          />
+          {past && (
+            <p className="mt-1 text-xs text-red-700">
+              This time has passed, so the timer won&apos;t show.
+            </p>
+          )}
+        </>,
+      );
+    }
+    case 'select':
+      return wrap(
+        <select
+          id={id}
+          value={v || 'best_selling'}
+          onChange={(e) => onValue(field, e.target.value)}
+          className={inputCls}
+        >
+          {Object.entries(SORT_OPTIONS).map(([key, o]) => (
+            <option key={key} value={key}>
+              {o.label}
+            </option>
+          ))}
+        </select>,
+      );
+    case 'product':
+      return wrap(
+        <ProductPicker
+          id={id}
+          value={v}
+          options={d.products}
+          onChange={(next) => onValue(field, next)}
+        />,
+        true,
+      );
     case 'text':
       return wrap(
         <input
@@ -1077,6 +1193,98 @@ function VideoSlot({block, field, onUploaded, onRemove}) {
   );
 }
 
+/** Type-to-search product picker; value is a product GID. */
+function ProductPicker({id, value, options, onChange}) {
+  const [q, setQ] = useState('');
+  const current = options.find((o) => o.id === value);
+  const needle = q.trim().toLowerCase();
+  const matches = needle
+    ? options
+        .filter((o) =>
+          `${o.title} ${o.vendor ?? ''}`.toLowerCase().includes(needle),
+        )
+        .slice(0, 8)
+    : [];
+  return (
+    <div>
+      {current && (
+        <div className="mb-2 flex items-center gap-3 rounded border border-line p-2">
+          {current.image && (
+            <img
+              src={`${current.image}${current.image.includes('?') ? '&' : '?'}width=96`}
+              alt=""
+              className="h-12 w-10 rounded object-cover"
+            />
+          )}
+          <span className="min-w-0 flex-1 text-sm">
+            <span className="block truncate font-semibold">
+              {current.title}
+            </span>
+            <span className="block text-xs text-muted">{current.vendor}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="text-xs text-muted underline"
+          >
+            Change
+          </button>
+        </div>
+      )}
+      {!current && (
+        <>
+          <input
+            id={id}
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search products by name or brand…"
+            autoComplete="off"
+            className={inputCls}
+          />
+          {needle && (
+            <ul className="mt-1 max-h-72 overflow-auto rounded border border-line">
+              {matches.length === 0 && (
+                <li className="p-2 text-xs text-muted">
+                  No matching products.
+                </li>
+              )}
+              {matches.map((o) => (
+                <li key={o.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(o.id);
+                      setQ('');
+                    }}
+                    className="flex w-full items-center gap-3 p-2 text-left text-sm hover:bg-surface"
+                  >
+                    {o.image ? (
+                      <img
+                        src={`${o.image}${o.image.includes('?') ? '&' : '?'}width=80`}
+                        alt=""
+                        className="h-10 w-8 rounded object-cover"
+                      />
+                    ) : (
+                      <span className="h-10 w-8 rounded bg-surface" />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{o.title}</span>
+                      <span className="block text-xs text-muted">
+                        {o.vendor}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function CollectionsPicker({id, value, options, onChange}) {
   const [pick, setPick] = useState('');
   const byId = Object.fromEntries(options.map((o) => [o.id, o]));
@@ -1147,6 +1355,19 @@ function CollectionsPicker({id, value, options, onChange}) {
   );
 }
 
+const BLOCK_GROUPS = [
+  {
+    id: 'content',
+    title: 'Page content',
+    note: 'Banners, products and categories.',
+  },
+  {
+    id: 'conversion',
+    title: 'Conversion boosters',
+    note: 'Offers, trust and urgency built on real store data — they help shoppers decide and buy.',
+  },
+];
+
 function AddBlock({onAdd}) {
   return (
     <section className="mt-6 rounded border border-line p-4">
@@ -1154,30 +1375,38 @@ function AddBlock({onAdd}) {
       <p className="mt-0.5 text-xs text-muted">
         Each picture shows how the block looks on the page. Click one to add it.
       </p>
-      <ul className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        {Object.entries(BLOCK_TYPES).map(([kind, t]) => (
-          <li key={kind}>
-            <button
-              type="button"
-              onClick={() => onAdd(kind)}
-              className="group flex h-full w-full flex-col overflow-hidden rounded-md border border-line text-left transition hover:-translate-y-0.5 hover:border-[#FAA619] hover:shadow-md"
-            >
-              <BlockThumbnail
-                kind={kind}
-                className="aspect-[160/96] w-full rounded-none border-0 border-b bg-[#FAFAFB]"
-              />
-              <span className="block p-3">
-                <span className="block text-sm font-bold group-hover:text-[#B86E00]">
-                  + {t.label}
-                </span>
-                <span className="mt-0.5 block text-xs text-muted">
-                  {t.description}
-                </span>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      {BLOCK_GROUPS.map((g) => (
+        <div key={g.id} className="mt-4">
+          <h3 className="text-sm font-bold">{g.title}</h3>
+          <p className="text-xs text-muted">{g.note}</p>
+          <ul className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            {Object.entries(BLOCK_TYPES)
+              .filter(([, t]) => (t.group ?? 'content') === g.id)
+              .map(([kind, t]) => (
+                <li key={kind}>
+                  <button
+                    type="button"
+                    onClick={() => onAdd(kind)}
+                    className="group flex h-full w-full flex-col overflow-hidden rounded-md border border-line text-left transition hover:-translate-y-0.5 hover:border-[#FAA619] hover:shadow-md"
+                  >
+                    <BlockThumbnail
+                      kind={kind}
+                      className="aspect-[160/96] w-full rounded-none border-0 border-b bg-[#FAFAFB]"
+                    />
+                    <span className="block p-3">
+                      <span className="block text-sm font-bold group-hover:text-[#B86E00]">
+                        + {t.label}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted">
+                        {t.description}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
     </section>
   );
 }
@@ -1215,6 +1444,16 @@ const EDITOR_OPTIONS_QUERY = `#graphql
               }
             }
           }
+        }
+      }
+    }
+    products(first: 250, sortKey: TITLE) {
+      nodes {
+        id
+        title
+        vendor
+        featuredImage {
+          url
         }
       }
     }

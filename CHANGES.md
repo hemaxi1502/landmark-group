@@ -159,14 +159,32 @@ Build pages from ready-made blocks without a developer. Same password as `/edito
 | Block | Settings | Uses |
 |---|---|---|
 | Banner / Hero | desktop + mobile image, video, link, alt text | homepage banner component |
-| Product carousel | heading, collection, number of products | department/PDP product row |
-| Product grid | heading, collection, number of products | category page grid |
+| Product carousel | heading, collection, sort, number of products | department/PDP product row |
+| Product grid | heading, collection, sort, number of products | category page grid |
 | Category tiles | heading, up to 12 collections | department category tiles |
 | Brand tiles | heading, collection | department brand tiles |
 | Shop by price | heading, collection | department price bands |
 | Text | heading, paragraph, button link | — |
 | Homepage section | any homepage section (hero, Top Categories, …) | the homepage section itself |
 | Category page (automatic) | collection | the whole automatic top menu category page |
+
+### Conversion boosters (grouped separately in the block palette)
+
+Every block shows real store data or text the editor typed — no fake "X people viewing", fake stock counts or resetting timers (CCPA dark-patterns guidelines, 2023).
+
+| Block | Settings | Behaviour |
+|---|---|---|
+| Offers & coupons | heading, lines `CODE \| what it gives` | one-tap Copy button. Codes must exist in Shopify → Discounts |
+| Sale countdown | heading, text, end time, button link | live timer; hides itself (server + browser) once the end time passes. A past time is a warning, not a save blocker |
+| Trust badges | lines `Title \| short line` | empty = standard four (free shipping, returns, COD, original) |
+| Deals | heading, collection (optional), count | only products with compare-at > price, highest % off first; ₹0 and sold-out excluded |
+| Recently viewed | heading | shopper's own history (browser storage); hidden for first-time visitors |
+| Product spotlight | product, tagline, why-buy text | gallery, price/MRP/% off, size picker, Add to basket → opens basket |
+| Email sign-up | heading, text | posts to `/newsletter` (customer with marketing consent) |
+| FAQ | heading, lines `Question \| Answer` | accordion + FAQPage JSON-LD (Google limits FAQ rich results to a few sites, so treat it as UX, not SEO) |
+| Image with text | image, heading, text, button link | 50/50 on desktop, stacked on mobile |
+
+Not built on purpose: ratings/reviews blocks (no product has reviews yet) and urgency/social proof that the store can't back with real data.
 
 Example: `/pages/festive-sale` (8 blocks) was built this way.
 

@@ -134,6 +134,22 @@ const ICONS = [
   ),
 ];
 
+function T({x, y, size = 6, weight = 700, fill = INK, anchor, children}) {
+  return (
+    <text
+      x={x}
+      y={y}
+      textAnchor={anchor}
+      fontFamily={FONT}
+      fontWeight={weight}
+      fontSize={size}
+      fill={fill}
+    >
+      {children}
+    </text>
+  );
+}
+
 const THUMBS = {
   banner: (
     <>
@@ -499,6 +515,456 @@ const THUMBS = {
       >
         ✦ AUTO
       </text>
+    </>
+  ),
+  offer_codes: (
+    <>
+      <Heading />
+      {[
+        ['SAVE200', '₹200 OFF'],
+        ['NEW15', '15% OFF'],
+      ].map(([code, what], i) => {
+        const y = 20 + i * 36;
+        return (
+          <g key={code}>
+            <rect
+              x="10"
+              y={y}
+              width="140"
+              height="30"
+              rx="3"
+              fill="#FFF7EA"
+              stroke={ORANGE}
+              strokeDasharray="3 2"
+            />
+            <circle cx="10" cy={y + 15} r="4" fill="#fff" />
+            <circle cx="150" cy={y + 15} r="4" fill="#fff" />
+            <T x={20} y={y + 13} size={8} weight={800} fill="#B86E00">
+              {what}
+            </T>
+            <rect
+              x="20"
+              y={y + 18}
+              width="44"
+              height="3"
+              rx="1.5"
+              fill={MUTED}
+            />
+            <rect
+              x="86"
+              y={y + 8}
+              width="56"
+              height="14"
+              rx="2"
+              fill="#fff"
+              stroke={INK}
+              strokeDasharray="2 1.5"
+            />
+            <T x={107} y={y + 17.3} size={5.5} weight={800} anchor="middle">
+              {code}
+            </T>
+            <rect
+              x="128"
+              y={y + 9.5}
+              width="12"
+              height="11"
+              rx="1.5"
+              fill={INK}
+            />
+            <rect
+              x="131"
+              y={y + 12}
+              width="5"
+              height="6"
+              rx="0.8"
+              fill="none"
+              stroke="#fff"
+              strokeWidth="0.9"
+            />
+            <rect
+              x="132.5"
+              y={y + 13.5}
+              width="5"
+              height="6"
+              rx="0.8"
+              fill={INK}
+              stroke="#fff"
+              strokeWidth="0.9"
+            />
+          </g>
+        );
+      })}
+    </>
+  ),
+
+  countdown: (
+    <>
+      <rect x="6" y="8" width="148" height="80" rx="4" fill={INK} />
+      <T x={80} y={24} size={7.5} weight={800} fill="#fff" anchor="middle">
+        SALE ENDS IN
+      </T>
+      {[
+        ['02', 'DAYS'],
+        ['14', 'HRS'],
+        ['37', 'MIN'],
+        ['09', 'SEC'],
+      ].map(([n, u], i) => {
+        const x = 24 + i * 29;
+        return (
+          <g key={u}>
+            <rect x={x} y="31" width="24" height="24" rx="3" fill="#fff" />
+            <T x={x + 12} y={48} size={12} weight={800} anchor="middle">
+              {n}
+            </T>
+            <T
+              x={x + 12}
+              y={62}
+              size={4.5}
+              weight={700}
+              fill="#C9CDD2"
+              anchor="middle"
+            >
+              {u}
+            </T>
+          </g>
+        );
+      })}
+      <rect x="58" y="68" width="44" height="12" rx="1.5" fill={ORANGE} />
+      <T x={80} y={75.8} size={5.5} weight={800} fill="#fff" anchor="middle">
+        SHOP NOW
+      </T>
+    </>
+  ),
+
+  trust_badges: (
+    <>
+      <rect x="6" y="22" width="148" height="52" rx="4" fill="#F6F7F8" />
+      {[
+        // truck
+        (cx) => (
+          <g>
+            <rect x={cx - 9} y="36" width="11" height="8" rx="1" fill={INK} />
+            <path d={`M${cx + 2} 38.5 h4.5 l3 3 v2.5 h-7.5 z`} fill={INK} />
+            <circle cx={cx - 5} cy="45.5" r="2" fill={ORANGE} />
+            <circle cx={cx + 5.5} cy="45.5" r="2" fill={ORANGE} />
+          </g>
+        ),
+        // return arrow
+        (cx) => (
+          <path
+            d={`M${cx + 7} 44 a7 7 0 1 1 -2 -7 M${cx + 6} 33 v4.5 h-4.5`}
+            fill="none"
+            stroke={INK}
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        ),
+        // cash
+        (cx) => (
+          <g>
+            <rect
+              x={cx - 9}
+              y="35"
+              width="18"
+              height="11"
+              rx="1.5"
+              fill={INK}
+            />
+            <circle cx={cx} cy="40.5" r="3" fill={ORANGE} />
+          </g>
+        ),
+        // shield tick
+        (cx) => (
+          <g>
+            <path
+              d={`M${cx} 32 l8 3 v5 q0 6 -8 9 q-8 -3 -8 -9 v-5 z`}
+              fill={INK}
+            />
+            <path
+              d={`M${cx - 3.5} 40.5 l2.5 2.5 l4.5 -5`}
+              fill="none"
+              stroke={ORANGE}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+        ),
+      ].map((icon, i) => {
+        const cx = 25 + i * 37;
+        return (
+          <g key={cx}>
+            {icon(cx)}
+            <rect
+              x={cx - 13}
+              y="55"
+              width="26"
+              height="3.5"
+              rx="1.5"
+              fill={INK}
+            />
+            <rect
+              x={cx - 10}
+              y="62"
+              width="20"
+              height="2.5"
+              rx="1"
+              fill={MUTED}
+            />
+          </g>
+        );
+      })}
+    </>
+  ),
+
+  deals: (
+    <>
+      <Heading />
+      {[0, 1, 2, 3].map((i) => {
+        const x = 10 + i * 36;
+        return (
+          <g key={i}>
+            <ProductCard x={x} y={20} w={32} h={60} i={i + 2} price={false} />
+            <rect x={x} y="76" width="12" height="3" rx="1" fill={INK} />
+            <rect x={x + 14} y="76.8" width="10" height="1.5" fill={MUTED} />
+            <rect
+              x={x + 1.5}
+              y="21.5"
+              width="17"
+              height="8"
+              rx="1.5"
+              fill="#E02D3C"
+            />
+            <T
+              x={x + 10}
+              y={27.2}
+              size={4.6}
+              weight={800}
+              fill="#fff"
+              anchor="middle"
+            >
+              {['-60%', '-45%', '-40%', '-25%'][i]}
+            </T>
+          </g>
+        );
+      })}
+    </>
+  ),
+
+  recently_viewed: (
+    <>
+      <circle
+        cx="13"
+        cy="11"
+        r="4.5"
+        fill="none"
+        stroke={INK}
+        strokeWidth="1.3"
+      />
+      <path
+        d="M13 8.5 v2.8 l1.8 1.2"
+        fill="none"
+        stroke={INK}
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      <Heading x={21} />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <g key={i} opacity={i > 2 ? 0.45 : 1}>
+          <ProductCard x={10 + i * 29} y={22} w={25} h={48} i={i + 4} />
+        </g>
+      ))}
+      <rect x="10" y="80" width="140" height="10" rx="5" fill="#F1F2F4" />
+      <T x={80} y={86.8} size={5} weight={600} fill={MUTED} anchor="middle">
+        ONLY SHOWN TO RETURNING SHOPPERS
+      </T>
+    </>
+  ),
+
+  product_spotlight: (
+    <>
+      <rect x="8" y="8" width="66" height="80" rx="3" fill={PASTELS[0]} />
+      <Shirt cx={41} cy={46} s={20} fill={SHIRTS[0]} />
+      {[0, 1, 2].map((i) => (
+        <rect
+          key={i}
+          x={12 + i * 13}
+          y="76"
+          width="10"
+          height="9"
+          rx="1"
+          fill="#fff"
+          stroke={i === 0 ? INK : LINE}
+        />
+      ))}
+      <rect x="82" y="12" width="30" height="3" rx="1.5" fill={MUTED} />
+      <rect x="82" y="19" width="62" height="5" rx="2" fill={INK} />
+      <T x={82} y={36} size={8} weight={800}>
+        ₹1,299
+      </T>
+      <rect x="111" y="31.5" width="14" height="1.5" fill={MUTED} />
+      <T x={128} y={35.5} size={5} weight={800} fill="#16A34A">
+        35% OFF
+      </T>
+      {['S', 'M', 'L', 'XL'].map((sz, i) => (
+        <g key={sz}>
+          <rect
+            x={82 + i * 16}
+            y="43"
+            width="13"
+            height="11"
+            rx="1.5"
+            fill={i === 1 ? INK : '#fff'}
+            stroke={INK}
+            strokeWidth="0.8"
+          />
+          <T
+            x={88.5 + i * 16}
+            y={50.4}
+            size={5}
+            weight={700}
+            fill={i === 1 ? '#fff' : INK}
+            anchor="middle"
+          >
+            {sz}
+          </T>
+        </g>
+      ))}
+      <rect x="82" y="62" width="68" height="14" rx="1.5" fill={ORANGE} />
+      <T x={116} y={71} size={5.5} weight={800} fill="#fff" anchor="middle">
+        ADD TO BASKET
+      </T>
+    </>
+  ),
+
+  newsletter: (
+    <>
+      <rect x="6" y="10" width="148" height="76" rx="4" fill="#FFF4E0" />
+      <rect
+        x="66"
+        y="18"
+        width="28"
+        height="19"
+        rx="2"
+        fill="#fff"
+        stroke={ORANGE}
+        strokeWidth="1.4"
+      />
+      <path
+        d="M66.5 19 L80 30 L93.5 19"
+        fill="none"
+        stroke={ORANGE}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <rect x="44" y="43" width="72" height="5" rx="2.5" fill={INK} />
+      <rect x="54" y="52" width="52" height="3" rx="1.5" fill={MUTED} />
+      <rect
+        x="22"
+        y="62"
+        width="82"
+        height="14"
+        rx="1.5"
+        fill="#fff"
+        stroke={LINE}
+      />
+      <T x={28} y={71} size={5.5} weight={500} fill={MUTED}>
+        you@email.com
+      </T>
+      <rect x="106" y="62" width="32" height="14" rx="1.5" fill={INK} />
+      <T x={122} y={71} size={5} weight={800} fill="#fff" anchor="middle">
+        SIGN UP
+      </T>
+    </>
+  ),
+
+  faq: (
+    <>
+      <Heading />
+      {[0, 1, 2, 3].map((i) => {
+        const open = i === 0;
+        const y = 19 + i * 16 + (i > 0 ? 12 : 0);
+        return (
+          <g key={i}>
+            <rect
+              x="10"
+              y={y}
+              width="140"
+              height={open ? 26 : 13}
+              rx="2"
+              fill={open ? '#F6F7F8' : '#fff'}
+              stroke={LINE}
+            />
+            <T x={16} y={y + 8.8} size={6.5} weight={800} fill={ORANGE}>
+              Q
+            </T>
+            <rect
+              x="25"
+              y={y + 5}
+              width={[70, 82, 60, 76][i]}
+              height="3.5"
+              rx="1.5"
+              fill={INK}
+            />
+            <T x={142} y={y + 9.2} size={8} weight={600} anchor="middle">
+              {open ? '−' : '+'}
+            </T>
+            {open && (
+              <>
+                <rect
+                  x="25"
+                  y={y + 14}
+                  width="110"
+                  height="2.5"
+                  rx="1"
+                  fill={MUTED}
+                />
+                <rect
+                  x="25"
+                  y={y + 19}
+                  width="84"
+                  height="2.5"
+                  rx="1"
+                  fill={MUTED}
+                />
+              </>
+            )}
+          </g>
+        );
+      })}
+    </>
+  ),
+
+  image_text: (
+    <>
+      <defs>
+        <linearGradient id="tb-imgtext" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#DCEBFF" />
+          <stop offset="1" stopColor="#EFE5FF" />
+        </linearGradient>
+      </defs>
+      <rect
+        x="8"
+        y="10"
+        width="70"
+        height="76"
+        rx="3"
+        fill="url(#tb-imgtext)"
+      />
+      <circle cx="58" cy="28" r="7" fill="#FFF3B8" />
+      <path
+        d="M8 74 L32 48 L48 64 L58 54 L78 74 V86 H8 Z"
+        fill="#8B5CF6"
+        opacity="0.55"
+      />
+      <rect x="88" y="24" width="56" height="6" rx="3" fill={INK} />
+      <rect x="88" y="36" width="62" height="3" rx="1.5" fill={MUTED} />
+      <rect x="88" y="43" width="58" height="3" rx="1.5" fill={MUTED} />
+      <rect x="88" y="50" width="44" height="3" rx="1.5" fill={MUTED} />
+      <rect x="88" y="60" width="40" height="12" rx="1.5" fill={INK} />
+      <T x={108} y={67.8} size={5.5} weight={800} fill="#fff" anchor="middle">
+        SHOP NOW
+      </T>
     </>
   ),
 };

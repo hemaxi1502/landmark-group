@@ -54,20 +54,33 @@ function CarouselSkeleton({title}) {
  * shows the shopper's other recently viewed products.
  */
 export function RecentlyViewed({current}) {
-  const {items, add} = useLocalProductList('recently-viewed', 12);
+  const {add} = useLocalProductList('recently-viewed', 12);
   useEffect(() => {
     add(current);
     // record once per product page
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current.handle]);
-  const others = items.filter((i) => i.handle !== current.handle);
+  return <RecentlyViewedList exclude={current.handle} />;
+}
+
+/**
+ * The shopper's recently viewed products (localStorage), without recording
+ * anything. Renders nothing until there's at least one product.
+ */
+export function RecentlyViewedList({
+  exclude,
+  title = 'Recently Viewed',
+  className = 'mt-14',
+}) {
+  const {items} = useLocalProductList('recently-viewed', 12);
+  const others = items.filter((i) => i.handle !== exclude);
   if (!others.length) return null;
   return (
-    <section className="mt-14" aria-label="Recently viewed">
-      <h2 className="mb-4 text-lg font-semibold">Recently Viewed</h2>
+    <section className={className} aria-label={title}>
+      <h2 className="mb-4 text-lg font-semibold">{title}</h2>
       <Carousel
         itemClassName="basis-[40%] md:basis-1/5 lg:basis-1/6"
-        ariaLabel="Recently viewed"
+        ariaLabel={title}
       >
         {others.map((p) => (
           <Link

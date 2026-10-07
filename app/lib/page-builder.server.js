@@ -2,7 +2,12 @@ import {PRODUCT_CARD_FRAGMENT} from '~/lib/product-card';
 import {buildBrands, buildPriceBands} from '~/lib/department';
 import {loadDepartment} from '~/lib/department-data';
 import {loadHomeRenderData} from '~/components/home/HomeSectionByHandle';
-import {isRenderable, parseBlock} from '~/lib/page-builder';
+import {
+  isRenderable,
+  parseBlock,
+  rankDeals,
+  SORT_OPTIONS,
+} from '~/lib/page-builder';
 
 /**
  * Loads a page_layout by handle and the data each visible block needs.
@@ -43,8 +48,14 @@ async function resolveBlock(storefront, block, home) {
     switch (block.kind) {
       case 'product_carousel':
       case 'product_grid': {
+        const order = SORT_OPTIONS[block.sort] ?? SORT_OPTIONS.best_selling;
         const {collection} = await storefront.query(BLOCK_PRODUCTS_QUERY, {
-          variables: {handle: block.collection.handle, first: block.count},
+          variables: {
+            handle: block.collection.handle,
+            first: block.count,
+            sortKey: order.sortKey,
+            reverse: order.reverse,
+          },
           cache: storefront.CacheShort(),
         });
         const products = collection?.products?.nodes ?? [];
@@ -70,6 +81,28 @@ async function resolveBlock(storefront, block, home) {
       }
       case 'home_section':
         return home ? {...block, home} : null;
+      case 'deals': {
+        const data = block.collection
+          ? await storefront.query(DEALS_COLLECTION_QUERY, {
+              variables: {handle: block.collection.handle},
+              cache: storefront.CacheShort(),
+            })
+          : await storefront.query(DEALS_ALL_QUERY, {
+              cache: storefront.CacheShort(),
+            });
+        const nodes =
+          (block.collection ? data?.collection?.products : data?.products)
+            ?.nodes ?? [];
+        const products = rankDeals(nodes).slice(0, block.count);
+        return products.length ? {...block, products} : null;
+      }
+      case 'product_spotlight': {
+        const {product} = await storefront.query(SPOTLIGHT_QUERY, {
+          variables: {handle: block.product},
+          cache: storefront.CacheShort(),
+        });
+        return product ? {...block, spotlight: product} : null;
+      }
       case 'category_tiles':
         return {
           ...block,
@@ -127,6 +160,9 @@ const PAGE_LAYOUT_QUERY = `#graphql
                   ... on Metaobject {
                     handle
                   }
+                  ... on Product {
+                    handle
+                  }
                   ... on Video {
                     sources {
                       url
@@ -172,11 +208,13 @@ const BLOCK_PRODUCTS_QUERY = `#graphql
   query PageBlockProducts(
     $handle: String!
     $first: Int!
+    $sortKey: ProductCollectionSortKeys!
+    $reverse: Boolean!
     $country: CountryCode
     $language: LanguageCode
   ) @inContext(country: $country, language: $language) {
     collection(handle: $handle) {
-      products(first: $first, sortKey: BEST_SELLING) {
+      products(first: $first, sortKey: $sortKey, reverse: $reverse) {
         nodes {
           ...ProductCard
         }
@@ -205,6 +243,90 @@ const BLOCK_FACETS_QUERY = `#graphql
         }
         nodes {
           ...ProductCard
+        }
+      }
+    }
+  }
+`;
+
+const DEALS_COLLECTION_QUERY = `#graphql
+  ${PRODUCT_CARD_FRAGMENT}
+  query PageBlockDealsCollection(
+    $handle: String!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    collection(handle: $handle) {
+      products(first: 100, sortKey: BEST_SELLING) {
+        nodes {
+          ...ProductCard
+        }
+      }
+    }
+  }
+`;
+
+const DEALS_ALL_QUERY = `#graphql
+  ${PRODUCT_CARD_FRAGMENT}
+  query PageBlockDealsAll($country: CountryCode, $language: LanguageCode)
+  @inContext(country: $country, language: $language) {
+    products(first: 100, sortKey: BEST_SELLING) {
+      nodes {
+        ...ProductCard
+      }
+    }
+  }
+`;
+
+const SPOTLIGHT_QUERY = `#graphql
+  query PageBlockSpotlight(
+    $handle: String!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    product(handle: $handle) {
+      id
+      handle
+      title
+      vendor
+      description
+      availableForSale
+      images(first: 4) {
+        nodes {
+          id
+          url
+          altText
+          width
+          height
+        }
+      }
+      options {
+        name
+      }
+      variants(first: 50) {
+        nodes {
+          id
+          title
+          availableForSale
+          selectedOptions {
+            name
+            value
+          }
+          image {
+            id
+            url
+            altText
+            width
+            height
+          }
+          price {
+            amount
+            currencyCode
+          }
+          compareAtPrice {
+            amount
+            currencyCode
+          }
         }
       }
     }

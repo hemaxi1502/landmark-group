@@ -2089,7 +2089,6 @@ export type PageLayoutQuery = {
                           | 'GenericFile'
                           | 'Model3d'
                           | 'Page'
-                          | 'Product'
                           | 'ProductVariant';
                       }
                     | ({__typename: 'Collection'} & Pick<
@@ -2106,6 +2105,10 @@ export type PageLayoutQuery = {
                       })
                     | ({__typename: 'Metaobject'} & Pick<
                         StorefrontAPI.Metaobject,
+                        'handle'
+                      >)
+                    | ({__typename: 'Product'} & Pick<
+                        StorefrontAPI.Product,
                         'handle'
                       >)
                     | ({__typename: 'Video'} & {
@@ -2155,6 +2158,8 @@ export type PageLayoutQuery = {
 export type PageBlockProductsQueryVariables = StorefrontAPI.Exact<{
   handle: StorefrontAPI.Scalars['String']['input'];
   first: StorefrontAPI.Scalars['Int']['input'];
+  sortKey: StorefrontAPI.ProductCollectionSortKeys;
+  reverse: StorefrontAPI.Scalars['Boolean']['input'];
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
 }>;
@@ -2258,6 +2263,150 @@ export type PageBlockFacetsQuery = {
       >;
     };
   }>;
+};
+
+export type PageBlockDealsCollectionQueryVariables = StorefrontAPI.Exact<{
+  handle: StorefrontAPI.Scalars['String']['input'];
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type PageBlockDealsCollectionQuery = {
+  collection?: StorefrontAPI.Maybe<{
+    products: {
+      nodes: Array<
+        Pick<
+          StorefrontAPI.Product,
+          | 'id'
+          | 'handle'
+          | 'title'
+          | 'vendor'
+          | 'publishedAt'
+          | 'availableForSale'
+          | 'tags'
+        > & {
+          images: {
+            nodes: Array<
+              Pick<
+                StorefrontAPI.Image,
+                'id' | 'url' | 'altText' | 'width' | 'height'
+              >
+            >;
+          };
+          priceRange: {
+            minVariantPrice: Pick<
+              StorefrontAPI.MoneyV2,
+              'amount' | 'currencyCode'
+            >;
+          };
+          compareAtPriceRange: {
+            minVariantPrice: Pick<
+              StorefrontAPI.MoneyV2,
+              'amount' | 'currencyCode'
+            >;
+          };
+          rating?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
+          ratingCount?: StorefrontAPI.Maybe<
+            Pick<StorefrontAPI.Metafield, 'value'>
+          >;
+        }
+      >;
+    };
+  }>;
+};
+
+export type PageBlockDealsAllQueryVariables = StorefrontAPI.Exact<{
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type PageBlockDealsAllQuery = {
+  products: {
+    nodes: Array<
+      Pick<
+        StorefrontAPI.Product,
+        | 'id'
+        | 'handle'
+        | 'title'
+        | 'vendor'
+        | 'publishedAt'
+        | 'availableForSale'
+        | 'tags'
+      > & {
+        images: {
+          nodes: Array<
+            Pick<
+              StorefrontAPI.Image,
+              'id' | 'url' | 'altText' | 'width' | 'height'
+            >
+          >;
+        };
+        priceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        compareAtPriceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        rating?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
+        ratingCount?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'>
+        >;
+      }
+    >;
+  };
+};
+
+export type PageBlockSpotlightQueryVariables = StorefrontAPI.Exact<{
+  handle: StorefrontAPI.Scalars['String']['input'];
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type PageBlockSpotlightQuery = {
+  product?: StorefrontAPI.Maybe<
+    Pick<
+      StorefrontAPI.Product,
+      'id' | 'handle' | 'title' | 'vendor' | 'description' | 'availableForSale'
+    > & {
+      images: {
+        nodes: Array<
+          Pick<
+            StorefrontAPI.Image,
+            'id' | 'url' | 'altText' | 'width' | 'height'
+          >
+        >;
+      };
+      options: Array<Pick<StorefrontAPI.ProductOption, 'name'>>;
+      variants: {
+        nodes: Array<
+          Pick<
+            StorefrontAPI.ProductVariant,
+            'id' | 'title' | 'availableForSale'
+          > & {
+            selectedOptions: Array<
+              Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
+            >;
+            image?: StorefrontAPI.Maybe<
+              Pick<
+                StorefrontAPI.Image,
+                'id' | 'url' | 'altText' | 'width' | 'height'
+              >
+            >;
+            price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+            compareAtPrice?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
+            >;
+          }
+        >;
+      };
+    }
+  >;
 };
 
 export type ProductCardFragment = Pick<
@@ -2688,6 +2837,13 @@ export type PageBuilderOptionsQuery = {
             >;
           }>;
         }>;
+      }
+    >;
+  };
+  products: {
+    nodes: Array<
+      Pick<StorefrontAPI.Product, 'id' | 'title' | 'vendor'> & {
+        featuredImage?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Image, 'url'>>;
       }
     >;
   };
@@ -3415,17 +3571,29 @@ interface GeneratedQueryTypes {
     return: HomeNodesQuery;
     variables: HomeNodesQueryVariables;
   };
-  '#graphql\n  fragment PageBlockImage on Image {\n    url\n    altText\n    width\n    height\n  }\n  query PageLayout(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    layout: metaobject(handle: {type: "page_layout", handle: $handle}) {\n      handle\n      title: field(key: "title") {\n        value\n      }\n      description: field(key: "description") {\n        value\n      }\n      sections: field(key: "sections") {\n        references(first: 40) {\n          nodes {\n            ... on Metaobject {\n              id\n              fields {\n                key\n                value\n                reference {\n                  __typename\n                  ... on MediaImage {\n                    image {\n                      ...PageBlockImage\n                    }\n                  }\n                  ... on Collection {\n                    handle\n                    title\n                  }\n                  ... on Metaobject {\n                    handle\n                  }\n                  ... on Video {\n                    sources {\n                      url\n                      mimeType\n                      format\n                      width\n                      height\n                    }\n                    previewImage {\n                      url\n                    }\n                  }\n                }\n                references(first: 12) {\n                  nodes {\n                    ... on Collection {\n                      handle\n                      title\n                      image {\n                        ...PageBlockImage\n                      }\n                      products(first: 1, sortKey: BEST_SELLING) {\n                        nodes {\n                          featuredImage {\n                            ...PageBlockImage\n                          }\n                        }\n                      }\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  fragment PageBlockImage on Image {\n    url\n    altText\n    width\n    height\n  }\n  query PageLayout(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    layout: metaobject(handle: {type: "page_layout", handle: $handle}) {\n      handle\n      title: field(key: "title") {\n        value\n      }\n      description: field(key: "description") {\n        value\n      }\n      sections: field(key: "sections") {\n        references(first: 40) {\n          nodes {\n            ... on Metaobject {\n              id\n              fields {\n                key\n                value\n                reference {\n                  __typename\n                  ... on MediaImage {\n                    image {\n                      ...PageBlockImage\n                    }\n                  }\n                  ... on Collection {\n                    handle\n                    title\n                  }\n                  ... on Metaobject {\n                    handle\n                  }\n                  ... on Product {\n                    handle\n                  }\n                  ... on Video {\n                    sources {\n                      url\n                      mimeType\n                      format\n                      width\n                      height\n                    }\n                    previewImage {\n                      url\n                    }\n                  }\n                }\n                references(first: 12) {\n                  nodes {\n                    ... on Collection {\n                      handle\n                      title\n                      image {\n                        ...PageBlockImage\n                      }\n                      products(first: 1, sortKey: BEST_SELLING) {\n                        nodes {\n                          featuredImage {\n                            ...PageBlockImage\n                          }\n                        }\n                      }\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: PageLayoutQuery;
     variables: PageLayoutQueryVariables;
   };
-  '#graphql\n  #graphql\n  fragment ProductCard on Product {\n    id\n    handle\n    title\n    vendor\n    publishedAt\n    availableForSale\n    tags\n    images(first: 2) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    rating: metafield(namespace: "reviews", key: "rating") {\n      value\n    }\n    ratingCount: metafield(namespace: "reviews", key: "rating_count") {\n      value\n    }\n  }\n\n  query PageBlockProducts(\n    $handle: String!\n    $first: Int!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: $first, sortKey: BEST_SELLING) {\n        nodes {\n          ...ProductCard\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  #graphql\n  fragment ProductCard on Product {\n    id\n    handle\n    title\n    vendor\n    publishedAt\n    availableForSale\n    tags\n    images(first: 2) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    rating: metafield(namespace: "reviews", key: "rating") {\n      value\n    }\n    ratingCount: metafield(namespace: "reviews", key: "rating_count") {\n      value\n    }\n  }\n\n  query PageBlockProducts(\n    $handle: String!\n    $first: Int!\n    $sortKey: ProductCollectionSortKeys!\n    $reverse: Boolean!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: $first, sortKey: $sortKey, reverse: $reverse) {\n        nodes {\n          ...ProductCard\n        }\n      }\n    }\n  }\n': {
     return: PageBlockProductsQuery;
     variables: PageBlockProductsQueryVariables;
   };
   '#graphql\n  #graphql\n  fragment ProductCard on Product {\n    id\n    handle\n    title\n    vendor\n    publishedAt\n    availableForSale\n    tags\n    images(first: 2) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    rating: metafield(namespace: "reviews", key: "rating") {\n      value\n    }\n    ratingCount: metafield(namespace: "reviews", key: "rating_count") {\n      value\n    }\n  }\n\n  query PageBlockFacets(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: 48, sortKey: BEST_SELLING) {\n        filters {\n          id\n          values {\n            id\n            label\n            count\n            input\n          }\n        }\n        nodes {\n          ...ProductCard\n        }\n      }\n    }\n  }\n': {
     return: PageBlockFacetsQuery;
     variables: PageBlockFacetsQueryVariables;
+  };
+  '#graphql\n  #graphql\n  fragment ProductCard on Product {\n    id\n    handle\n    title\n    vendor\n    publishedAt\n    availableForSale\n    tags\n    images(first: 2) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    rating: metafield(namespace: "reviews", key: "rating") {\n      value\n    }\n    ratingCount: metafield(namespace: "reviews", key: "rating_count") {\n      value\n    }\n  }\n\n  query PageBlockDealsCollection(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: 100, sortKey: BEST_SELLING) {\n        nodes {\n          ...ProductCard\n        }\n      }\n    }\n  }\n': {
+    return: PageBlockDealsCollectionQuery;
+    variables: PageBlockDealsCollectionQueryVariables;
+  };
+  '#graphql\n  #graphql\n  fragment ProductCard on Product {\n    id\n    handle\n    title\n    vendor\n    publishedAt\n    availableForSale\n    tags\n    images(first: 2) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    rating: metafield(namespace: "reviews", key: "rating") {\n      value\n    }\n    ratingCount: metafield(namespace: "reviews", key: "rating_count") {\n      value\n    }\n  }\n\n  query PageBlockDealsAll($country: CountryCode, $language: LanguageCode)\n  @inContext(country: $country, language: $language) {\n    products(first: 100, sortKey: BEST_SELLING) {\n      nodes {\n        ...ProductCard\n      }\n    }\n  }\n': {
+    return: PageBlockDealsAllQuery;
+    variables: PageBlockDealsAllQueryVariables;
+  };
+  '#graphql\n  query PageBlockSpotlight(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    product(handle: $handle) {\n      id\n      handle\n      title\n      vendor\n      description\n      availableForSale\n      images(first: 4) {\n        nodes {\n          id\n          url\n          altText\n          width\n          height\n        }\n      }\n      options {\n        name\n      }\n      variants(first: 50) {\n        nodes {\n          id\n          title\n          availableForSale\n          selectedOptions {\n            name\n            value\n          }\n          image {\n            id\n            url\n            altText\n            width\n            height\n          }\n          price {\n            amount\n            currencyCode\n          }\n          compareAtPrice {\n            amount\n            currencyCode\n          }\n        }\n      }\n    }\n  }\n': {
+    return: PageBlockSpotlightQuery;
+    variables: PageBlockSpotlightQueryVariables;
   };
   '#graphql\n    query MainHeaderMetaobject {\n      metaobject(handle: {type: "main_header", handle: "main-header-azyeqhek"}) {\n        fields {\n          key\n          value\n          reference {\n            ... on Metaobject {\n              fields {\n                key\n                value\n              }\n            }\n            ... on MediaImage {\n              image {\n                url\n              }\n            }\n          }\n        }\n      }\n    }\n  ': {
     return: MainHeaderMetaobjectQuery;
@@ -3463,7 +3631,7 @@ interface GeneratedQueryTypes {
     return: CatalogQuery;
     variables: CatalogQueryVariables;
   };
-  '#graphql\n  query PageBuilderOptions($country: CountryCode, $language: LanguageCode)\n  @inContext(country: $country, language: $language) {\n    collections(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n      }\n    }\n    homeSections: metaobjects(type: "home_page", first: 50) {\n      nodes {\n        id\n        handle\n        heading: field(key: "heading") {\n          reference {\n            ... on Metaobject {\n              title: field(key: "heading") {\n                value\n              }\n            }\n          }\n        }\n      }\n    }\n    menu(handle: "main-menu") {\n      items {\n        title\n        url\n        items {\n          title\n          url\n          items {\n            title\n            url\n          }\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query PageBuilderOptions($country: CountryCode, $language: LanguageCode)\n  @inContext(country: $country, language: $language) {\n    collections(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n      }\n    }\n    homeSections: metaobjects(type: "home_page", first: 50) {\n      nodes {\n        id\n        handle\n        heading: field(key: "heading") {\n          reference {\n            ... on Metaobject {\n              title: field(key: "heading") {\n                value\n              }\n            }\n          }\n        }\n      }\n    }\n    products(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        title\n        vendor\n        featuredImage {\n          url\n        }\n      }\n    }\n    menu(handle: "main-menu") {\n      items {\n        title\n        url\n        items {\n          title\n          url\n          items {\n            title\n            url\n          }\n        }\n      }\n    }\n  }\n': {
     return: PageBuilderOptionsQuery;
     variables: PageBuilderOptionsQueryVariables;
   };

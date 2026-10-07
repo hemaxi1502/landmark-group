@@ -9,6 +9,16 @@ import {
   Section,
 } from '~/components/department/DepartmentView';
 import {normalizeLink} from '~/lib/page-builder';
+import {RecentlyViewedList} from '~/components/pdp/ProductCarousels';
+import {
+  Countdown,
+  FaqBlock,
+  ImageText,
+  NewsletterBlock,
+  OfferCodes,
+  ProductSpotlight,
+  TrustBadges,
+} from '~/components/page-builder/ConversionBlocks';
 
 /**
  * Renders page-builder blocks (see ~/lib/page-builder BLOCK_TYPES) with the
@@ -191,6 +201,43 @@ function Block({block, first}) {
         </div>
       );
 
+    case 'offer_codes':
+      return <OfferCodes block={block} />;
+    case 'countdown':
+      return <Countdown block={block} />;
+    case 'trust_badges':
+      return <TrustBadges block={block} />;
+    case 'deals':
+      return (
+        <div className="container-site">
+          <ProductRow
+            title={block.heading || 'Top deals'}
+            products={block.products}
+            viewAll={
+              block.collection
+                ? `/collections/${block.collection.handle}`
+                : '/collections/all'
+            }
+          />
+        </div>
+      );
+    case 'recently_viewed':
+      return (
+        <div className="container-site">
+          <RecentlyViewedList
+            title={block.heading || 'Recently viewed'}
+            className="mt-10 md:mt-14"
+          />
+        </div>
+      );
+    case 'product_spotlight':
+      return <ProductSpotlight block={block} />;
+    case 'newsletter':
+      return <NewsletterBlock block={block} />;
+    case 'faq':
+      return <FaqBlock block={block} />;
+    case 'image_text':
+      return <ImageText block={block} />;
     case 'department':
       return (
         <div className="mt-2">
