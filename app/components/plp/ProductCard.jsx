@@ -4,6 +4,7 @@ import {discountPercent, parseRating} from '~/lib/product-card';
 import {NEW_BADGE_DAYS} from '~/lib/site-config';
 import {useLocalProductList} from '~/lib/local-list';
 import {Icon} from '~/components/ui/Icon';
+import {IMAGE_SRCSET} from '~/lib/image';
 /**
  * PLP · Product Card — image (second image on hover), badges, brand, name,
  * price, MRP strike-through, discount %, rating, wishlist heart.
@@ -26,6 +27,7 @@ export function ProductCard({product, loading = 'lazy'}) {
         <div className="relative aspect-[3/4] overflow-hidden rounded bg-surface">
           {primary && (
             <Image
+              srcSetOptions={IMAGE_SRCSET}
               data={primary}
               alt={primary.altText || product.title}
               sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
@@ -35,6 +37,7 @@ export function ProductCard({product, loading = 'lazy'}) {
           )}
           {secondary && (
             <Image
+              srcSetOptions={IMAGE_SRCSET}
               data={secondary}
               alt=""
               sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"

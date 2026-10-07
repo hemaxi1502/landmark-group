@@ -1,5 +1,6 @@
 import {Link} from 'react-router';
 import {Image} from '@shopify/hydrogen';
+import {IMAGE_SRCSET} from '~/lib/image';
 /** Section title used by every homepage block. */
 export function SectionHeading({title}) {
   if (!title) return null;
@@ -32,6 +33,7 @@ export function HomeImg({
 }) {
   return (
     <Image
+      srcSetOptions={IMAGE_SRCSET}
       data={{...image, altText: alt || image.altText}}
       sizes={sizes}
       className={className}

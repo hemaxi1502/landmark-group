@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react';
 import {Image} from '@shopify/hydrogen';
 import {Icon} from '~/components/ui/Icon';
 import {Modal} from '~/components/ui/Modal';
+import {IMAGE_SRCSET} from '~/lib/image';
 /**
  * PDP · Product Image Gallery — thumbnails + main image, click to zoom
  * (full-screen lightbox), swipe strip on mobile. Jumps to the selected
@@ -36,6 +37,7 @@ export function ProductGallery({images, selectedImageUrl, title}) {
         {images.map((img, i) => (
           <div key={img.id ?? img.url} className="w-full shrink-0 snap-center">
             <Image
+              srcSetOptions={IMAGE_SRCSET}
               data={img}
               alt={img.altText || `${title} image ${i + 1}`}
               aspectRatio="3/4"
@@ -60,6 +62,7 @@ export function ProductGallery({images, selectedImageUrl, title}) {
                 className={`block w-full overflow-hidden rounded border-2 ${i === active ? 'border-ink' : 'border-transparent'}`}
               >
                 <Image
+                  srcSetOptions={IMAGE_SRCSET}
                   data={img}
                   alt=""
                   aspectRatio="3/4"
@@ -77,6 +80,7 @@ export function ProductGallery({images, selectedImageUrl, title}) {
           aria-label="Zoom image"
         >
           <Image
+            srcSetOptions={IMAGE_SRCSET}
             data={current}
             alt={current.altText || title}
             aspectRatio="3/4"

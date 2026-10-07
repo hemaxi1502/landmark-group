@@ -1,6 +1,7 @@
 import {Link} from 'react-router';
 import {Image} from '@shopify/hydrogen';
 import {toRelativeUrl} from '~/lib/home-content';
+import {IMAGE_SRCSET} from '~/lib/image';
 
 /**
  * Lean, high-performance GraphQL fragments for showcase section metaobjects
@@ -218,7 +219,8 @@ export function parseShowcaseData(sectionNode, defaultHeading = '') {
           if (rf.alt?.value) mobileAlt = rf.alt.value;
         }
       } else {
-        desktopImage = extractImageFromReference(field.reference) || desktopImage;
+        desktopImage =
+          extractImageFromReference(field.reference) || desktopImage;
         if (field.reference?.fields) {
           const rf = mapMetaobjectFields(field.reference.fields);
           if (rf.alt?.value) desktopAlt = rf.alt.value;
@@ -229,7 +231,9 @@ export function parseShowcaseData(sectionNode, defaultHeading = '') {
 
     // Cards collection detection
     if (
-      (key.includes('collection') || key.includes('card') || key.includes('section')) &&
+      (key.includes('collection') ||
+        key.includes('card') ||
+        key.includes('section')) &&
       field.references?.nodes?.length > 0
     ) {
       cards = field.references.nodes
@@ -253,7 +257,8 @@ export function parseShowcaseData(sectionNode, defaultHeading = '') {
             handle: cardNode.handle,
             image,
             title: cFields.title?.value || cardNode.handle || '',
-            link: toRelativeUrl(cFields.link?.value || cFields.url?.value) || '',
+            link:
+              toRelativeUrl(cFields.link?.value || cFields.url?.value) || '',
             sortOrder: isNaN(sortOrder) ? 0 : sortOrder,
           };
         })
@@ -310,7 +315,8 @@ export function ShowcaseSection({
   let effectivePosition = bannerPosition;
   if (!effectivePosition) {
     const handle = sectionData.handle.toLowerCase();
-    const bannerUrl = sectionData.banner?.desktopImage?.url?.toLowerCase() || '';
+    const bannerUrl =
+      sectionData.banner?.desktopImage?.url?.toLowerCase() || '';
     if (
       handle.includes('bestseller') ||
       handle.includes('top-brand') ||
@@ -339,17 +345,18 @@ function ShowcaseSectionView({sectionData, bannerPosition, className}) {
   const {heading, banner, cards} = sectionData;
 
   // Banner component
-  const bannerElement = banner && (banner.desktopImage || banner.mobileImage) && (
-    <div className="relative w-full overflow-hidden rounded-2xl leading-none">
-      {banner.link ? (
-        <Link to={banner.link} className="block w-full h-full">
+  const bannerElement = banner &&
+    (banner.desktopImage || banner.mobileImage) && (
+      <div className="relative w-full overflow-hidden rounded-2xl leading-none">
+        {banner.link ? (
+          <Link to={banner.link} className="block w-full h-full">
+            <BannerImages banner={banner} />
+          </Link>
+        ) : (
           <BannerImages banner={banner} />
-        </Link>
-      ) : (
-        <BannerImages banner={banner} />
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
 
   // Cards carousel component
   const cardsElement = cards && cards.length > 0 && (
@@ -371,6 +378,7 @@ function ShowcaseSectionView({sectionData, bannerPosition, className}) {
               style={{aspectRatio: cardAspectRatio}}
             >
               <Image
+                srcSetOptions={IMAGE_SRCSET}
                 data={card.image}
                 alt={card.title || `${heading} card ${index + 1}`}
                 sizes="(min-width: 1024px) 293px, (min-width: 640px) 31vw, 42vw"
@@ -468,6 +476,7 @@ function BannerImages({banner}) {
           style={{aspectRatio: mobRatio}}
         >
           <Image
+            srcSetOptions={IMAGE_SRCSET}
             data={banner.mobileImage}
             alt={banner.mobileAlt || banner.desktopAlt || 'Banner'}
             sizes="100vw"
@@ -484,6 +493,7 @@ function BannerImages({banner}) {
           style={{aspectRatio: deskRatio}}
         >
           <Image
+            srcSetOptions={IMAGE_SRCSET}
             data={banner.desktopImage}
             alt={banner.desktopAlt || 'Banner'}
             sizes="(min-width: 1244px) 1244px, 100vw"

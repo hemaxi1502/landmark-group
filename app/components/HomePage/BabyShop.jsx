@@ -1,5 +1,6 @@
 import {Link} from 'react-router';
 import {Image} from '@shopify/hydrogen';
+import {IMAGE_SRCSET} from '~/lib/image';
 
 /**
  * Lean, high-performance GraphQL fragments for BabyShop metaobjects
@@ -153,7 +154,9 @@ export function parseBabyShopData(metaobjectData) {
 
   // 2. Nested inside home_page metaobject with handle "babyshop"
   if (metaobjectData.babyShopMetaobject?.fields) {
-    const hpFields = mapMetaobjectFields(metaobjectData.babyShopMetaobject.fields);
+    const hpFields = mapMetaobjectFields(
+      metaobjectData.babyShopMetaobject.fields,
+    );
     if (hpFields.section_data?.references?.nodes?.length > 0) {
       babyShopDataNode = hpFields.section_data.references.nodes[0];
     }
@@ -167,7 +170,10 @@ export function parseBabyShopData(metaobjectData) {
   }
 
   // 3. Direct pass of metaobject node
-  if (!babyShopDataNode && (metaobjectData.type === 'babyshop_data' || metaobjectData.fields)) {
+  if (
+    !babyShopDataNode &&
+    (metaobjectData.type === 'babyshop_data' || metaobjectData.fields)
+  ) {
     babyShopDataNode = metaobjectData;
   }
 
@@ -186,7 +192,8 @@ export function parseBabyShopData(metaobjectData) {
 
   // Extract Mobile Banner
   const mobileBannerRef = fields.babyshop_banner_mobile?.reference;
-  const mobileImage = extractImageFromReference(mobileBannerRef) || desktopImage;
+  const mobileImage =
+    extractImageFromReference(mobileBannerRef) || desktopImage;
   const mobileAlt = mobileBannerRef?.fields
     ? mapMetaobjectFields(mobileBannerRef.fields).alt?.value || desktopAlt
     : desktopAlt;
@@ -270,6 +277,7 @@ function BabyShopView({sectionData}) {
     <div className="relative w-full aspect-[500/320] sm:aspect-[1244/439] overflow-hidden rounded-2xl leading-none">
       {banner.mobileImage && (
         <Image
+          srcSetOptions={IMAGE_SRCSET}
           data={banner.mobileImage}
           alt={banner.mobileAltText || banner.altText || 'Babyshop'}
           sizes="100vw"
@@ -279,6 +287,7 @@ function BabyShopView({sectionData}) {
       )}
       {banner.desktopImage && (
         <Image
+          srcSetOptions={IMAGE_SRCSET}
           data={banner.desktopImage}
           alt={banner.altText || 'Babyshop'}
           sizes="(min-width: 1244px) 1244px, 100vw"
@@ -336,8 +345,13 @@ function BabyShopView({sectionData}) {
                 const cardContent = (
                   <div className="relative w-full aspect-[450/635] transition-transform duration-300 group-hover:scale-[1.02]">
                     <Image
+                      srcSetOptions={IMAGE_SRCSET}
                       data={card.image}
-                      alt={card.title || card.altText || `Babyshop category ${index + 1}`}
+                      alt={
+                        card.title ||
+                        card.altText ||
+                        `Babyshop category ${index + 1}`
+                      }
                       sizes="(min-width: 1024px) 293px, (min-width: 640px) 31vw, 42vw"
                       className="w-full h-full object-contain pointer-events-none"
                       loading="lazy"

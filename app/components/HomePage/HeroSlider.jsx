@@ -2,6 +2,7 @@ import {useState, useEffect, useCallback} from 'react';
 import {Link} from 'react-router';
 import {Image} from '@shopify/hydrogen';
 import {toRelativeUrl} from '~/lib/home-content';
+import {IMAGE_SRCSET} from '~/lib/image';
 
 /**
  * GraphQL fragment for hero slider metaobject
@@ -117,13 +118,27 @@ function extractSlideData(node) {
 
     // Desktop and mobile image fields
     const desktopImageField =
-      getField('desktop_image', 'desktopImage', 'desktop_banner', 'banner', 'image', 'slide_image') ||
+      getField(
+        'desktop_image',
+        'desktopImage',
+        'desktop_banner',
+        'banner',
+        'image',
+        'slide_image',
+      ) ||
       Object.values(fieldMap).find(
-        (f) => f.reference && (f.reference.image || f.reference.__typename === 'MediaImage'),
+        (f) =>
+          f.reference &&
+          (f.reference.image || f.reference.__typename === 'MediaImage'),
       );
 
-    const mobileImageField =
-      getField('mobile_image', 'mobileImage', 'image_mobile', 'mobile_banner', 'mobile');
+    const mobileImageField = getField(
+      'mobile_image',
+      'mobileImage',
+      'image_mobile',
+      'mobile_banner',
+      'mobile',
+    );
 
     const desktopImage = desktopImageField?.reference?.image || null;
     const mobileImage = mobileImageField?.reference?.image || null;
@@ -170,7 +185,13 @@ export function parseHeroSliderData(metaobjectData) {
   let heroSliderEntry = null;
 
   // Direct node pass
-  if (metaobjectData.handle === 'hero-slider' || (metaobjectData.fields && !metaobjectData.heroSliderMetaobject && !metaobjectData.homePageMetaobjects && !metaobjectData.homePageSections)) {
+  if (
+    metaobjectData.handle === 'hero-slider' ||
+    (metaobjectData.fields &&
+      !metaobjectData.heroSliderMetaobject &&
+      !metaobjectData.homePageMetaobjects &&
+      !metaobjectData.homePageSections)
+  ) {
     heroSliderEntry = metaobjectData;
   }
 
@@ -180,7 +201,9 @@ export function parseHeroSliderData(metaobjectData) {
   }
 
   // Lookup by list query (homePageSections or homePageMetaobjects)
-  const listNodes = metaobjectData.homePageSections?.nodes || metaobjectData.homePageMetaobjects?.nodes;
+  const listNodes =
+    metaobjectData.homePageSections?.nodes ||
+    metaobjectData.homePageMetaobjects?.nodes;
   if (!heroSliderEntry && listNodes) {
     heroSliderEntry =
       listNodes.find(
@@ -189,7 +212,9 @@ export function parseHeroSliderData(metaobjectData) {
           node.handle === 'hero_slider' ||
           node.fields?.some(
             (f) =>
-              (f.key === 'display_name' || f.key === 'name' || f.key === 'title') &&
+              (f.key === 'display_name' ||
+                f.key === 'name' ||
+                f.key === 'title') &&
               f.value?.toLowerCase() === 'hero slider',
           ) ||
           node.fields?.some(
@@ -214,7 +239,10 @@ export function parseHeroSliderData(metaobjectData) {
   const rawSlides = sectionDataField?.references?.nodes || [];
   const slides = rawSlides
     .map(extractSlideData)
-    .filter((slide) => slide && (slide.desktopImage || slide.mobileImage || slide.image))
+    .filter(
+      (slide) =>
+        slide && (slide.desktopImage || slide.mobileImage || slide.image),
+    )
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   // Return null if no dynamic slides exist
@@ -324,6 +352,7 @@ function HeroSliderView({sliderData}) {
                     <>
                       {/* Mobile image */}
                       <Image
+                        srcSetOptions={IMAGE_SRCSET}
                         data={slide.mobileImage}
                         alt={slide.altText}
                         sizes="100vw"
@@ -332,6 +361,7 @@ function HeroSliderView({sliderData}) {
                       />
                       {/* Desktop image */}
                       <Image
+                        srcSetOptions={IMAGE_SRCSET}
                         data={slide.desktopImage || slide.image}
                         alt={slide.altText}
                         sizes="(min-width: 1232px) 1232px, 100vw"
@@ -342,6 +372,7 @@ function HeroSliderView({sliderData}) {
                   ) : (
                     slide.image && (
                       <Image
+                        srcSetOptions={IMAGE_SRCSET}
                         data={slide.image}
                         alt={slide.altText}
                         sizes="(min-width: 1232px) 1232px, 100vw"
@@ -360,10 +391,7 @@ function HeroSliderView({sliderData}) {
                   aria-hidden={index !== currentSlide}
                 >
                   {slide.buttonLink ? (
-                    <Link
-                      to={slide.buttonLink}
-                      className="block w-full h-full"
-                    >
+                    <Link to={slide.buttonLink} className="block w-full h-full">
                       {slideContent}
                     </Link>
                   ) : (
@@ -422,7 +450,9 @@ function HeroSliderView({sliderData}) {
             {/* Pagination dots */}
             <div className="pt-2 sm:pt-3 pb-1 flex justify-center items-center gap-1">
               {slides.map((slide, index) => {
-                const dotKey = slide.id ? `dot-${slide.id}` : `dot-slide-${index}`;
+                const dotKey = slide.id
+                  ? `dot-${slide.id}`
+                  : `dot-slide-${index}`;
                 const isActive = index === currentSlide;
                 return (
                   <button

@@ -5,6 +5,7 @@ import {useAside} from '~/components/Aside';
 import {useLocalProductList} from '~/lib/local-list';
 import {discountPercent} from '~/lib/product-card';
 import {Icon} from '~/components/ui/Icon';
+import {IMAGE_SRCSET} from '~/lib/image';
 
 /**
  * One basket line: image, brand, title, size/colour, price + MRP + % off,
@@ -41,6 +42,7 @@ export function CartLineItem({layout, line, childrenMap}) {
         >
           {image && (
             <Image
+              srcSetOptions={IMAGE_SRCSET}
               alt={title}
               aspectRatio="3/4"
               data={image}
