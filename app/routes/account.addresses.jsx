@@ -1,3 +1,4 @@
+import {useEffect, useState} from 'react';
 import {
   data,
   Form,
@@ -5,6 +6,16 @@ import {
   useNavigation,
   useOutletContext,
 } from 'react-router';
+import {
+  btnLink,
+  btnPrimary,
+  btnSecondary,
+  Card,
+  Field,
+  FormError,
+  inputCls,
+  PageTitle,
+} from '~/components/account/ui';
 import {
   UPDATE_ADDRESS_MUTATION,
   DELETE_ADDRESS_MUTATION,
@@ -249,42 +260,220 @@ export async function action({request, context}) {
   }
 }
 
+// Shopify's zone codes for India (state field of the Customer Account API).
+const INDIA_STATES = [
+  ['AN', 'Andaman and Nicobar Islands'],
+  ['AP', 'Andhra Pradesh'],
+  ['AR', 'Arunachal Pradesh'],
+  ['AS', 'Assam'],
+  ['BR', 'Bihar'],
+  ['CH', 'Chandigarh'],
+  ['CG', 'Chhattisgarh'],
+  ['DN', 'Dadra and Nagar Haveli'],
+  ['DD', 'Daman and Diu'],
+  ['DL', 'Delhi'],
+  ['GA', 'Goa'],
+  ['GJ', 'Gujarat'],
+  ['HR', 'Haryana'],
+  ['HP', 'Himachal Pradesh'],
+  ['JK', 'Jammu and Kashmir'],
+  ['JH', 'Jharkhand'],
+  ['KA', 'Karnataka'],
+  ['KL', 'Kerala'],
+  ['LA', 'Ladakh'],
+  ['LD', 'Lakshadweep'],
+  ['MP', 'Madhya Pradesh'],
+  ['MH', 'Maharashtra'],
+  ['MN', 'Manipur'],
+  ['ML', 'Meghalaya'],
+  ['MZ', 'Mizoram'],
+  ['NL', 'Nagaland'],
+  ['OR', 'Odisha'],
+  ['PY', 'Puducherry'],
+  ['PB', 'Punjab'],
+  ['RJ', 'Rajasthan'],
+  ['SK', 'Sikkim'],
+  ['TN', 'Tamil Nadu'],
+  ['TS', 'Telangana'],
+  ['TR', 'Tripura'],
+  ['UP', 'Uttar Pradesh'],
+  ['UK', 'Uttarakhand'],
+  ['WB', 'West Bengal'],
+];
+
 export default function Addresses() {
   const {customer} = useOutletContext();
   const {defaultAddress, addresses} = customer;
+  /** @type {ActionReturnData} */
+  const action = useActionData();
+  const [mode, setMode] = useState(null); // null | 'new' | address id
+  const count = addresses.nodes.length;
+
+  // Close the form once a save/create/delete succeeds.
+  useEffect(() => {
+    if (action && !action.error) setMode(null);
+  }, [action]);
+
+  // Default address first.
+  const list = [...addresses.nodes].sort(
+    (a, b) =>
+      Number(b.id === defaultAddress?.id) - Number(a.id === defaultAddress?.id),
+  );
 
   return (
-    <div className="account-addresses">
-      <h2>Addresses</h2>
-      <br />
-      <div>
-        <div>
-          <legend>Create address</legend>
-          <NewAddressForm key={addresses.nodes.length} />
-        </div>
-        <br />
-        <hr />
-        <br />
-        {!addresses.nodes.length ? (
-          <p>You have no addresses saved.</p>
-        ) : (
-          <ExistingAddresses
-            addresses={addresses}
-            defaultAddress={defaultAddress}
-          />
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitle sub="Saved addresses are offered at checkout.">
+          Addresses
+        </PageTitle>
+        {mode !== 'new' && (
+          <button
+            type="button"
+            className={btnSecondary}
+            onClick={() => setMode('new')}
+          >
+            + Add new address
+          </button>
         )}
       </div>
+
+      {mode === 'new' && (
+        <Card title="New address">
+          <NewAddressForm
+            key={count}
+            isFirst={count === 0}
+            onCancel={() => setMode(null)}
+          />
+        </Card>
+      )}
+
+      {count === 0 && mode !== 'new' ? (
+        <Card className="py-10 text-center">
+          <p className="text-[15px] font-semibold">No saved addresses yet.</p>
+          <p className="mt-1 text-[14px] text-gray-500">
+            Add one to check out faster.
+          </p>
+        </Card>
+      ) : (
+        <ul className="grid gap-4 md:grid-cols-2">
+          {list.map((address) => {
+            const isDefault = address.id === defaultAddress?.id;
+            const editing = mode === address.id;
+            return (
+              <li
+                key={address.id}
+                className={editing ? 'md:col-span-2' : undefined}
+              >
+                <Card
+                  title={
+                    <span className="flex items-center gap-2">
+                      {address.firstName} {address.lastName}
+                      {isDefault && (
+                        <span className="rounded-full bg-[#FAA619]/15 px-2 py-0.5 text-[11px] font-semibold text-[#B86E00]">
+                          Default
+                        </span>
+                      )}
+                    </span>
+                  }
+                  className="h-full"
+                >
+                  {editing ? (
+                    <AddressForm
+                      addressId={address.id}
+                      address={address}
+                      defaultAddress={defaultAddress}
+                    >
+                      {({stateForMethod}) => (
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            disabled={stateForMethod('PUT') !== 'idle'}
+                            formMethod="PUT"
+                            type="submit"
+                            className={btnPrimary}
+                          >
+                            {stateForMethod('PUT') !== 'idle'
+                              ? 'Saving…'
+                              : 'Save address'}
+                          </button>
+                          <button
+                            type="button"
+                            className={btnLink}
+                            onClick={() => setMode(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </AddressForm>
+                  ) : (
+                    <>
+                      <address className="text-[14px] not-italic leading-relaxed text-gray-700">
+                        {(address.formatted ?? []).map((line, i) => (
+                          // eslint-disable-next-line react/no-array-index-key
+                          <span key={i} className="block">
+                            {line}
+                          </span>
+                        ))}
+                        {address.phoneNumber && (
+                          <span className="mt-1 block">
+                            Mobile: {address.phoneNumber}
+                          </span>
+                        )}
+                      </address>
+                      <div className="mt-4 flex items-center gap-4">
+                        <button
+                          type="button"
+                          className={btnLink}
+                          onClick={() => setMode(address.id)}
+                        >
+                          Edit
+                        </button>
+                        <DeleteAddress addressId={address.id} />
+                      </div>
+                    </>
+                  )}
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
 
-function NewAddressForm() {
+function DeleteAddress({addressId}) {
+  const {state, formMethod, formData} = useNavigation();
+  const busy =
+    state !== 'idle' &&
+    formMethod === 'DELETE' &&
+    formData?.get('addressId') === addressId;
+  return (
+    <Form
+      method="DELETE"
+      onSubmit={(e) => {
+        if (!window.confirm('Delete this address?')) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="addressId" value={addressId} />
+      <button
+        type="submit"
+        disabled={busy}
+        className={`${btnLink} hover:text-red-600`}
+      >
+        {busy ? 'Deleting…' : 'Delete'}
+      </button>
+    </Form>
+  );
+}
+
+function NewAddressForm({isFirst, onCancel}) {
   const newAddress = {
     address1: '',
     address2: '',
     city: '',
     company: '',
-    territoryCode: '',
+    territoryCode: 'IN',
     firstName: '',
     id: 'new',
     lastName: '',
@@ -298,15 +487,20 @@ function NewAddressForm() {
       addressId={'NEW_ADDRESS_ID'}
       address={newAddress}
       defaultAddress={null}
+      defaultChecked={isFirst}
     >
       {({stateForMethod}) => (
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           <button
             disabled={stateForMethod('POST') !== 'idle'}
             formMethod="POST"
             type="submit"
+            className={btnPrimary}
           >
-            {stateForMethod('POST') !== 'idle' ? 'Creating' : 'Create'}
+            {stateForMethod('POST') !== 'idle' ? 'Saving…' : 'Save address'}
+          </button>
+          <button type="button" className={btnLink} onClick={onCancel}>
+            Cancel
           </button>
         </div>
       )}
@@ -315,194 +509,208 @@ function NewAddressForm() {
 }
 
 /**
- * @param {Pick<CustomerFragment, 'addresses' | 'defaultAddress'>}
- */
-function ExistingAddresses({addresses, defaultAddress}) {
-  return (
-    <div>
-      <legend>Existing addresses</legend>
-      {addresses.nodes.map((address) => (
-        <AddressForm
-          key={address.id}
-          addressId={address.id}
-          address={address}
-          defaultAddress={defaultAddress}
-        >
-          {({stateForMethod}) => (
-            <div>
-              <button
-                disabled={stateForMethod('PUT') !== 'idle'}
-                formMethod="PUT"
-                type="submit"
-              >
-                {stateForMethod('PUT') !== 'idle' ? 'Saving' : 'Save'}
-              </button>
-              <button
-                disabled={stateForMethod('DELETE') !== 'idle'}
-                formMethod="DELETE"
-                type="submit"
-              >
-                {stateForMethod('DELETE') !== 'idle' ? 'Deleting' : 'Delete'}
-              </button>
-            </div>
-          )}
-        </AddressForm>
-      ))}
-    </div>
-  );
-}
-
-/**
  * @param {{
  *   addressId: AddressFragment['id'];
  *   address: CustomerAddressInput;
  *   defaultAddress: CustomerFragment['defaultAddress'];
+ *   defaultChecked?: boolean;
  *   children: (props: {
  *     stateForMethod: (method: 'PUT' | 'POST' | 'DELETE') => Fetcher['state'];
  *   }) => React.ReactNode;
  * }}
  */
-export function AddressForm({addressId, address, defaultAddress, children}) {
+export function AddressForm({
+  addressId,
+  address,
+  defaultAddress,
+  defaultChecked,
+  children,
+}) {
   const {state, formMethod} = useNavigation();
   /** @type {ActionReturnData} */
   const action = useActionData();
   const error = action?.error?.[addressId];
   const isDefaultAddress = defaultAddress?.id === addressId;
+  const [country, setCountry] = useState(
+    (address?.territoryCode || 'IN').toUpperCase(),
+  );
+  // Unique ids per form: several forms can be on the page at once.
+  const uid = String(addressId).replace(/\W/g, '').slice(-12);
+  const id = (name) => `${name}-${uid}`;
+  const isIndia = country === 'IN';
+
   return (
-    <Form id={addressId}>
-      <fieldset>
-        <input type="hidden" name="addressId" defaultValue={addressId} />
-        <label htmlFor="firstName">First name*</label>
-        <input
-          aria-label="First name"
-          autoComplete="given-name"
-          defaultValue={address?.firstName ?? ''}
-          id="firstName"
-          name="firstName"
-          placeholder="First name"
-          required
-          type="text"
-        />
-        <label htmlFor="lastName">Last name*</label>
-        <input
-          aria-label="Last name"
-          autoComplete="family-name"
-          defaultValue={address?.lastName ?? ''}
-          id="lastName"
-          name="lastName"
-          placeholder="Last name"
-          required
-          type="text"
-        />
-        <label htmlFor="company">Company</label>
-        <input
-          aria-label="Company"
-          autoComplete="organization"
-          defaultValue={address?.company ?? ''}
-          id="company"
-          name="company"
-          placeholder="Company"
-          type="text"
-        />
-        <label htmlFor="address1">Address line*</label>
-        <input
-          aria-label="Address line 1"
-          autoComplete="address-line1"
-          defaultValue={address?.address1 ?? ''}
-          id="address1"
-          name="address1"
-          placeholder="Address line 1*"
-          required
-          type="text"
-        />
-        <label htmlFor="address2">Address line 2</label>
-        <input
-          aria-label="Address line 2"
-          autoComplete="address-line2"
-          defaultValue={address?.address2 ?? ''}
-          id="address2"
-          name="address2"
-          placeholder="Address line 2"
-          type="text"
-        />
-        <label htmlFor="city">City*</label>
-        <input
-          aria-label="City"
-          autoComplete="address-level2"
-          defaultValue={address?.city ?? ''}
-          id="city"
-          name="city"
-          placeholder="City"
-          required
-          type="text"
-        />
-        <label htmlFor="zoneCode">State / Province*</label>
-        <input
-          aria-label="State/Province"
-          autoComplete="address-level1"
-          defaultValue={address?.zoneCode ?? ''}
-          id="zoneCode"
-          name="zoneCode"
-          placeholder="State / Province"
-          required
-          type="text"
-        />
-        <label htmlFor="zip">Zip / Postal Code*</label>
-        <input
-          aria-label="Zip"
-          autoComplete="postal-code"
-          defaultValue={address?.zip ?? ''}
-          id="zip"
-          name="zip"
-          placeholder="Zip / Postal Code"
-          required
-          type="text"
-        />
-        <label htmlFor="territoryCode">Country Code*</label>
-        <input
-          aria-label="Country code"
-          autoComplete="country"
-          defaultValue={address?.territoryCode ?? ''}
-          id="territoryCode"
-          name="territoryCode"
-          placeholder="Country"
-          required
-          type="text"
-          maxLength={2}
-        />
-        <label htmlFor="phoneNumber">Phone</label>
-        <input
-          aria-label="Phone Number"
-          autoComplete="tel"
-          defaultValue={address?.phoneNumber ?? ''}
-          id="phoneNumber"
-          name="phoneNumber"
-          placeholder="+16135551111"
-          pattern="^\+?[1-9]\d{3,14}$"
-          type="tel"
-        />
-        <div>
+    <Form id={addressId} className="space-y-4">
+      <input type="hidden" name="addressId" defaultValue={addressId} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id={id('firstName')} label="First name" required>
           <input
-            defaultChecked={isDefaultAddress}
-            id="defaultAddress"
-            name="defaultAddress"
-            type="checkbox"
+            id={id('firstName')}
+            name="firstName"
+            autoComplete="given-name"
+            defaultValue={address?.firstName ?? ''}
+            required
+            type="text"
+            className={inputCls}
           />
-          <label htmlFor="defaultAddress">Set as default address</label>
+        </Field>
+        <Field id={id('lastName')} label="Last name" required>
+          <input
+            id={id('lastName')}
+            name="lastName"
+            autoComplete="family-name"
+            defaultValue={address?.lastName ?? ''}
+            required
+            type="text"
+            className={inputCls}
+          />
+        </Field>
+        <Field
+          id={id('phoneNumber')}
+          label="Mobile number"
+          hint="With country code, e.g. +919876543210"
+        >
+          <input
+            id={id('phoneNumber')}
+            name="phoneNumber"
+            autoComplete="tel"
+            defaultValue={address?.phoneNumber ?? ''}
+            placeholder="+919876543210"
+            pattern="^\+?[1-9]\d{3,14}$"
+            type="tel"
+            className={inputCls}
+          />
+        </Field>
+        <Field
+          id={id('zip')}
+          label={isIndia ? 'PIN code' : 'Postal code'}
+          required
+        >
+          <input
+            id={id('zip')}
+            name="zip"
+            autoComplete="postal-code"
+            defaultValue={address?.zip ?? ''}
+            required
+            inputMode={isIndia ? 'numeric' : undefined}
+            pattern={isIndia ? '[1-9][0-9]{5}' : undefined}
+            title={isIndia ? '6-digit PIN code' : undefined}
+            type="text"
+            className={inputCls}
+          />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field
+            id={id('address1')}
+            label="Flat, house no., building, street"
+            required
+          >
+            <input
+              id={id('address1')}
+              name="address1"
+              autoComplete="address-line1"
+              defaultValue={address?.address1 ?? ''}
+              required
+              type="text"
+              className={inputCls}
+            />
+          </Field>
         </div>
-        {error ? (
-          <p>
-            <mark>
-              <small>{error}</small>
-            </mark>
-          </p>
-        ) : (
-          <br />
-        )}
-        {children({
-          stateForMethod: (method) => (formMethod === method ? state : 'idle'),
-        })}
-      </fieldset>
+        <div className="sm:col-span-2">
+          <Field id={id('address2')} label="Area, landmark">
+            <input
+              id={id('address2')}
+              name="address2"
+              autoComplete="address-line2"
+              defaultValue={address?.address2 ?? ''}
+              type="text"
+              className={inputCls}
+            />
+          </Field>
+        </div>
+        <Field id={id('city')} label="City" required>
+          <input
+            id={id('city')}
+            name="city"
+            autoComplete="address-level2"
+            defaultValue={address?.city ?? ''}
+            required
+            type="text"
+            className={inputCls}
+          />
+        </Field>
+        <Field id={id('zoneCode')} label="State" required>
+          {isIndia ? (
+            <select
+              id={id('zoneCode')}
+              name="zoneCode"
+              autoComplete="address-level1"
+              defaultValue={address?.zoneCode ?? ''}
+              required
+              className={inputCls}
+            >
+              <option value="" disabled>
+                Select state
+              </option>
+              {INDIA_STATES.map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id={id('zoneCode')}
+              name="zoneCode"
+              autoComplete="address-level1"
+              defaultValue={address?.zoneCode ?? ''}
+              required
+              type="text"
+              className={inputCls}
+            />
+          )}
+        </Field>
+        <Field id={id('territoryCode')} label="Country" required>
+          <select
+            id={id('territoryCode')}
+            name="territoryCode"
+            autoComplete="country"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className={inputCls}
+          >
+            <option value="IN">India</option>
+            {country !== 'IN' && <option value={country}>{country}</option>}
+          </select>
+        </Field>
+        <Field id={id('company')} label="Company">
+          <input
+            id={id('company')}
+            name="company"
+            autoComplete="organization"
+            defaultValue={address?.company ?? ''}
+            type="text"
+            className={inputCls}
+          />
+        </Field>
+      </div>
+      <label
+        htmlFor={id('defaultAddress')}
+        className="flex items-center gap-2 text-[14px]"
+      >
+        <input
+          defaultChecked={isDefaultAddress || defaultChecked}
+          id={id('defaultAddress')}
+          name="defaultAddress"
+          type="checkbox"
+          className="h-4 w-4 accent-[#FAA619]"
+        />
+        Set as default address
+      </label>
+      <FormError>{error}</FormError>
+      {children({
+        stateForMethod: (method) => (formMethod === method ? state : 'idle'),
+      })}
     </Form>
   );
 }

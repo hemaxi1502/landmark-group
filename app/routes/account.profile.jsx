@@ -1,5 +1,13 @@
 import {CUSTOMER_UPDATE_MUTATION} from '~/graphql/customer-account/CustomerUpdateMutation';
 import {
+  btnPrimary,
+  Card,
+  Field,
+  FormError,
+  inputCls,
+  PageTitle,
+} from '~/components/account/ui';
+import {
   data,
   Form,
   useActionData,
@@ -86,50 +94,75 @@ export default function AccountProfile() {
   /** @type {ActionReturnData} */
   const action = useActionData();
   const customer = action?.customer ?? account?.customer;
+  const saving = state !== 'idle';
+  const email = account?.customer?.emailAddress?.emailAddress;
+  const phone = account?.customer?.phoneNumber?.phoneNumber;
 
   return (
-    <div className="account-profile">
-      <h2>My profile</h2>
-      <br />
-      <Form method="PUT">
-        <legend>Personal information</legend>
-        <fieldset>
-          <label htmlFor="firstName">First name</label>
-          <input
-            id="firstName"
-            name="firstName"
-            type="text"
-            autoComplete="given-name"
-            placeholder="First name"
-            aria-label="First name"
-            defaultValue={customer.firstName ?? ''}
-            minLength={2}
-          />
-          <label htmlFor="lastName">Last name</label>
-          <input
-            id="lastName"
-            name="lastName"
-            type="text"
-            autoComplete="family-name"
-            placeholder="Last name"
-            aria-label="Last name"
-            defaultValue={customer.lastName ?? ''}
-            minLength={2}
-          />
-        </fieldset>
-        {action?.error ? (
-          <p>
-            <mark>
-              <small>{action.error}</small>
-            </mark>
-          </p>
-        ) : (
-          <br />
-        )}
-        <button type="submit" disabled={state !== 'idle'}>
-          {state !== 'idle' ? 'Updating' : 'Update'}
-        </button>
-      </Form>
+    <div className="space-y-5">
+      <PageTitle sub="Your name as it appears on orders and invoices.">
+        Profile
+      </PageTitle>
+
+      <Card title="Personal information">
+        <Form method="PUT" className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id="firstName" label="First name">
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                autoComplete="given-name"
+                placeholder="First name"
+                defaultValue={customer?.firstName ?? ''}
+                minLength={2}
+                className={inputCls}
+              />
+            </Field>
+            <Field id="lastName" label="Last name">
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                autoComplete="family-name"
+                placeholder="Last name"
+                defaultValue={customer?.lastName ?? ''}
+                minLength={2}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <FormError>{action?.error}</FormError>
+          {action?.customer && !saving && (
+            <p
+              role="status"
+              className="text-[13px] font-semibold text-green-700"
+            >
+              Profile updated.
+            </p>
+          )}
+          <button type="submit" disabled={saving} className={btnPrimary}>
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </Form>
+      </Card>
+
+      <Card title="Sign-in details">
+        <dl className="grid gap-4 text-[14px] sm:grid-cols-2">
+          <div>
+            <dt className="text-[13px] text-gray-500">Email</dt>
+            <dd className="font-semibold">{email ?? '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-[13px] text-gray-500">Mobile</dt>
+            <dd className="font-semibold">{phone ?? 'Not added'}</dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-[12px] text-gray-500">
+          You sign in with a one-time code sent to this email, so there is no
+          password to manage.
+        </p>
+      </Card>
     </div>
   );
 }

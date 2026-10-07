@@ -47,6 +47,7 @@ export const CUSTOMER_ORDER_QUERY = `#graphql
     name
     confirmationNumber
     statusPageUrl
+    financialStatus
     fulfillmentStatus
     processedAt
     fulfillments(first: 1) {
@@ -55,6 +56,9 @@ export const CUSTOMER_ORDER_QUERY = `#graphql
       }
     }
     totalTax {
+      ...OrderMoney
+    }
+    totalShipping {
       ...OrderMoney
     }
     totalPrice {
