@@ -5,8 +5,9 @@ import {adminGraphql} from './admin-api.server.js';
  *
  * Reads the homepage metaobject tree through the Admin API:
  *   home_page entries → section_data / mobile_banner → (data containers) → cards
- * and exposes every entry that has a `url` and/or `sort_order` field as an
- * editable item. Containers (…_data, …_section) are walked through, not shown.
+ * and exposes every entry with something the client can change — a link,
+ * a position, an image or a text field — as an editable item. Entries that
+ * only hold lists (…_data, …_section) are walked through.
  */
 
 const SECTIONS_QUERY = `
@@ -22,6 +23,7 @@ const SECTIONS_QUERY = `
           value
           reference {
             ... on Metaobject {
+              id
               fields { key value }
             }
           }
@@ -99,8 +101,34 @@ function humanize(key) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+const IMAGE_LABELS = {
+  file: 'Image',
+  image: 'Image',
+  desktop_image: 'Desktop',
+  mobile_image: 'Mobile',
+  icon: 'Icon',
+};
+const TEXT_TYPES = new Set(['single_line_text_field', 'multi_line_text_field']);
+// Fields the editor never shows as text: positions and fixed choice lists.
+const HIDDEN_TEXT_KEYS = new Set(['sort_order', 'category']);
+
+function imageFields(node) {
+  return (node?.fields ?? []).filter((f) => f.type === 'file_reference');
+}
+
+function textFields(node) {
+  return (node?.fields ?? []).filter(
+    (f) => TEXT_TYPES.has(f.type) && !HIDDEN_TEXT_KEYS.has(f.key),
+  );
+}
+
 function isEditable(node) {
-  return Boolean(fieldOf(node, 'url') || fieldOf(node, 'sort_order'));
+  return Boolean(
+    fieldOf(node, 'url') ||
+    fieldOf(node, 'sort_order') ||
+    imageFields(node).length ||
+    textFields(node).length,
+  );
 }
 
 /** Converts an Admin API metaobject into the shape the editor UI uses. */
@@ -109,8 +137,16 @@ export function toEditorItem(node) {
     LABEL_KEYS.map((k) => fieldOf(node, k)?.value).find(Boolean) ||
     node.displayName ||
     node.handle;
-  const imageField = IMAGE_KEYS.map((k) => fieldOf(node, k)).find(
-    (f) => f?.reference?.image?.url,
+  const images = imageFields(node).map((f) => ({
+    key: f.key,
+    label: IMAGE_LABELS[f.key] ?? humanize(f.key),
+    url: f.reference?.image?.url ?? null,
+  }));
+  // Primary image first so the row thumbnail is the one shoppers see most.
+  images.sort(
+    (a, b) =>
+      (IMAGE_KEYS.indexOf(a.key) + 1 || 99) -
+      (IMAGE_KEYS.indexOf(b.key) + 1 || 99),
   );
   const urlField = fieldOf(node, 'url');
   const sortField = fieldOf(node, 'sort_order');
@@ -119,7 +155,14 @@ export function toEditorItem(node) {
     handle: node.handle,
     typeName: node.definition?.name ?? node.type,
     label,
-    image: imageField?.reference?.image?.url ?? null,
+    image: images.find((i) => i.url)?.url ?? null,
+    images,
+    texts: textFields(node).map((f) => ({
+      key: f.key,
+      label: humanize(f.key),
+      value: f.value ?? '',
+      multiline: f.type === 'multi_line_text_field',
+    })),
     hasUrl: Boolean(urlField),
     url: urlField?.value ?? '',
     hasSort: Boolean(sortField),
@@ -140,6 +183,7 @@ export function buildEditorTree(homeNodes, nodesById) {
   for (const home of homeNodes) {
     const headingRef = fieldOf(home, 'heading')?.reference;
     const heading = headingRef?.fields?.find((f) => f.key === 'heading')?.value;
+    const hiddenField = fieldOf(home, 'hidden');
     const groups = [];
     const seen = new Set();
 
@@ -174,7 +218,7 @@ export function buildEditorTree(homeNodes, nodesById) {
       addGroup(groupKey, groupLabel, ids);
       for (const id of ids) {
         const node = nodesById[id];
-        if (!node || isEditable(node) || seen.has(id)) continue;
+        if (!node || seen.has(id)) continue;
         seen.add(id);
         for (const f of node.fields ?? []) {
           const childIds = parseIds(f);
@@ -213,6 +257,10 @@ export function buildEditorTree(homeNodes, nodesById) {
       id: home.id,
       handle: home.handle,
       title: heading || humanize(home.handle),
+      headingId: headingRef?.id ?? null,
+      heading: heading ?? '',
+      canHide: Boolean(hiddenField),
+      hidden: hiddenField?.value === 'true',
       sortOrder: fieldOf(home, 'sort_order')?.value ?? '',
       groups,
     });
@@ -274,44 +322,93 @@ export function displayUrl(url, shopDomain) {
   return url;
 }
 
+const MEDIA_IMAGE_ID = /^gid:\/\/shopify\/MediaImage\/\d+$/;
+const MAX_TEXT = 1000;
+
 /**
- * Validates submitted changes against the current tree, so the editor can only
- * write `url` / `sort_order` on entries that belong to the homepage.
+ * Validates submitted changes against the current tree, so the editor can
+ * only write fields that the tree exposes, on entries that belong to the
+ * homepage:
+ *  - sections: `sort_order`, `hidden`
+ *  - section headings: `heading`
+ *  - items: `url`, `sort_order`, their text fields, their image fields
+ *    (value = a MediaImage id from an upload)
  *
- * @param {Array<{id: string; url?: string; sortOrder?: string}>} changes
+ * @param {Array<{id: string; fields: Record<string, string>}>} changes
  * @returns {{updates: Array<{id: string; fields: Array<{key: string; value: string}>}>, errors: string[]}}
  */
 export function planUpdates(changes, tree, shopDomain) {
-  const sectionIds = new Set(tree.sections.map((s) => s.id));
+  const sections = new Map(tree.sections.map((s) => [s.id, s]));
+  const headings = new Map(
+    tree.sections.filter((s) => s.headingId).map((s) => [s.headingId, s]),
+  );
   const updates = [];
   const errors = [];
 
   for (const change of Array.isArray(changes) ? changes : []) {
-    const item = tree.items[change?.id];
-    const isSection = sectionIds.has(change?.id);
-    if (!item && !isSection) {
+    const id = change?.id;
+    const input =
+      change?.fields && typeof change.fields === 'object' ? change.fields : {};
+    const item = tree.items[id];
+    const section = sections.get(id);
+    const headingOf = headings.get(id);
+    if (!item && !section && !headingOf) {
       errors.push('Skipped an entry that is not part of the homepage.');
       continue;
     }
+    const name =
+      item?.label ?? section?.title ?? headingOf?.title ?? 'an entry';
     const fields = [];
-    if (change.sortOrder !== undefined) {
-      const n = Number(change.sortOrder);
-      if (!Number.isInteger(n) || n < 0 || n > 9999) {
-        errors.push(`Invalid position for ${item?.label ?? 'a section'}.`);
-        continue;
+    let bad = false;
+
+    for (const [key, raw] of Object.entries(input)) {
+      const value = String(raw ?? '');
+      if (key === 'sort_order' && (section || item?.hasSort)) {
+        const n = Number(value);
+        if (!Number.isInteger(n) || n < 0 || n > 9999) {
+          errors.push(`Invalid position for ${name}.`);
+          bad = true;
+          break;
+        }
+        fields.push({key, value: String(n)});
+      } else if (key === 'hidden' && section?.canHide) {
+        fields.push({key, value: value === 'true' ? 'true' : 'false'});
+      } else if (key === 'heading' && headingOf) {
+        if (!value.trim() || value.length > 255) {
+          errors.push(`${name}: the heading must be 1–255 characters.`);
+          bad = true;
+          break;
+        }
+        fields.push({key, value: value.trim()});
+      } else if (key === 'url' && item?.hasUrl) {
+        const result = normalizeUrl(value, shopDomain);
+        if ('error' in result) {
+          errors.push(`${name}: ${result.error}`);
+          bad = true;
+          break;
+        }
+        fields.push({key, value: result.value});
+      } else if (item?.texts.some((t) => t.key === key)) {
+        if (value.length > MAX_TEXT) {
+          errors.push(`${name}: text is too long.`);
+          bad = true;
+          break;
+        }
+        fields.push({key, value});
+      } else if (item?.images.some((i) => i.key === key)) {
+        if (!MEDIA_IMAGE_ID.test(value)) {
+          errors.push(`${name}: the new image did not upload.`);
+          bad = true;
+          break;
+        }
+        fields.push({key, value});
+      } else {
+        errors.push(`${name}: "${key}" can't be edited here.`);
+        bad = true;
+        break;
       }
-      if (isSection || item.hasSort)
-        fields.push({key: 'sort_order', value: String(n)});
     }
-    if (change.url !== undefined && item?.hasUrl) {
-      const result = normalizeUrl(change.url, shopDomain);
-      if ('error' in result) {
-        errors.push(`${item.label}: ${result.error}`);
-        continue;
-      }
-      fields.push({key: 'url', value: result.value});
-    }
-    if (fields.length) updates.push({id: change.id, fields});
+    if (!bad && fields.length) updates.push({id, fields});
   }
   return {updates, errors};
 }
@@ -339,9 +436,7 @@ export async function loadEditorTree(env) {
       for (const node of page?.nodes ?? []) {
         if (!node?.id) continue;
         nodesById[node.id] = node;
-        if (!isEditable(node)) {
-          for (const f of node.fields ?? []) pending.push(...parseIds(f));
-        }
+        for (const f of node.fields ?? []) pending.push(...parseIds(f));
       }
     }
   }
@@ -385,8 +480,116 @@ export async function applyUpdates(env, updates) {
   return {saved, errors};
 }
 
+const STAGE_UPLOAD = `
+  mutation EditorStage($input: [StagedUploadInput!]!) {
+    stagedUploadsCreate(input: $input) {
+      stagedTargets { url resourceUrl parameters { name value } }
+      userErrors { field message }
+    }
+  }
+`;
+
+const CREATE_FILE = `
+  mutation EditorCreateFile($files: [FileCreateInput!]!) {
+    fileCreate(files: $files) {
+      files { id fileStatus ... on MediaImage { image { url } } }
+      userErrors { field message }
+    }
+  }
+`;
+
+const FILE_STATUS = `
+  query EditorFileStatus($id: ID!) {
+    node(id: $id) {
+      ... on MediaImage { id fileStatus image { url width height } }
+    }
+  }
+`;
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+]);
+export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Uploads an image to Shopify Files (staged upload → fileCreate) and returns
+ * its MediaImage id, plus the CDN url and size once Shopify has processed it
+ * (usually 1–3 seconds; null if it takes longer — the id is still valid).
+ *
+ * @param {File} file
+ */
+export async function uploadImage(env, file, alt = '') {
+  if (!file || typeof file.arrayBuffer !== 'function' || !file.size) {
+    return {error: 'Choose an image file.'};
+  }
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    return {error: 'Use a JPG, PNG, WebP, GIF or AVIF image.'};
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return {error: 'Images must be 20 MB or smaller.'};
+  }
+  const filename = String(file.name || 'image').replace(/[^\w.-]+/g, '-');
+
+  const staged = await adminGraphql(env, STAGE_UPLOAD, {
+    input: [
+      {
+        filename,
+        mimeType: file.type,
+        resource: 'IMAGE',
+        httpMethod: 'POST',
+        fileSize: String(file.size),
+      },
+    ],
+  });
+  const stageErr = staged?.stagedUploadsCreate?.userErrors?.[0];
+  const target = staged?.stagedUploadsCreate?.stagedTargets?.[0];
+  if (stageErr || !target) {
+    return {error: stageErr?.message ?? 'Shopify did not accept the upload.'};
+  }
+
+  const form = new FormData();
+  for (const {name, value} of target.parameters) form.append(name, value);
+  form.append('file', file, filename);
+  const put = await fetch(target.url, {method: 'POST', body: form});
+  if (!put.ok) {
+    return {error: `Upload failed (${put.status}). Try again.`};
+  }
+
+  const created = await adminGraphql(env, CREATE_FILE, {
+    files: [{originalSource: target.resourceUrl, contentType: 'IMAGE', alt}],
+  });
+  const createErr = created?.fileCreate?.userErrors?.[0];
+  const media = created?.fileCreate?.files?.[0];
+  if (createErr || !media?.id) {
+    return {error: createErr?.message ?? 'Shopify could not save the image.'};
+  }
+
+  // Wait briefly for processing so the editor can show the real image size.
+  let info = media.image ? {url: media.image.url} : null;
+  for (let i = 0; i < 6 && !info?.width; i++) {
+    await new Promise((r) => setTimeout(r, 700));
+    const status = await adminGraphql(env, FILE_STATUS, {id: media.id});
+    const node = status?.node;
+    if (node?.fileStatus === 'FAILED') {
+      return {error: 'Shopify could not process this image. Try another file.'};
+    }
+    if (node?.image?.url) info = node.image;
+  }
+  return {
+    id: media.id,
+    url: info?.url ?? null,
+    width: info?.width ?? null,
+    height: info?.height ?? null,
+  };
+}
+
 /**
  * @typedef {ReturnType<typeof toEditorItem>} EditorItem
- * @typedef {{id: string; handle: string; title: string; sortOrder: string;
+ * @typedef {{id: string; handle: string; title: string; heading: string;
+ *   headingId: string | null; canHide: boolean; hidden: boolean; sortOrder: string;
  *   groups: Array<{key: string; label: string; itemIds: string[]; sortable: boolean}>}} EditorSection
  */

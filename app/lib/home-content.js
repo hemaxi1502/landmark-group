@@ -46,6 +46,9 @@ export const HOME_SECTIONS_QUERY = `#graphql
         order: field(key: "sort_order") {
           value
         }
+        hidden: field(key: "hidden") {
+          value
+        }
         mobileBanner: field(key: "mobile_banner") {
           reference {
             ... on Metaobject {
@@ -345,11 +348,13 @@ export async function loadHomeSections(storefront, {skipHandles = []} = {}) {
     return res.nodes;
   };
   const skip = new Set(skipHandles);
-  const order = sections.nodes
+  // Sections switched off in the editor (or in admin: "Hide section").
+  const visible = sections.nodes.filter((n) => n.hidden?.value !== 'true');
+  const order = visible
     .map((n) => ({handle: n.handle, order: Number(n.order?.value ?? 999)}))
     .sort((x, y) => x.order - y.order);
   const built = await buildHomeSections(
-    sections.nodes.filter((n) => !skip.has(n.handle)),
+    visible.filter((n) => !skip.has(n.handle)),
     fetchNodes,
   );
   return {order, sections: built};

@@ -25,6 +25,7 @@ export default async function handleRequest(
     imgSrc: [
       "'self'",
       "data:",
+      "blob:", // editor: preview of an image before it finishes uploading
       "https://cdn.shopify.com",
       "https://media-uk-india-banners.landmarkshops.in",
       "https://assets-cloud.landmarkshops.in",
