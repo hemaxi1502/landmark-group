@@ -340,7 +340,7 @@ test('toRelativeUrl maps lifestylestores.com links it can, keeps the rest extern
   const {toRelativeUrl} = await import('../app/lib/home-content.js');
   const eq = (await import('node:assert/strict')).equal;
   eq(toRelativeUrl('https://www.lifestylestores.com/in/en/'), '/');
-  eq(toRelativeUrl('https://www.lifestylestores.com/in/en/department/women'), '/collections/women');
+  eq(toRelativeUrl('https://www.lifestylestores.com/in/en/department/women'), '/department/women');
   eq(toRelativeUrl('https://www.lifestylestores.com/in/en/storelocator'), 'https://www.lifestylestores.com/in/en/storelocator');
   eq(toRelativeUrl('https://www.lifestylestores.com/in/en/c/lifestylegiftcard'), 'https://www.lifestylestores.com/in/en/c/lifestylegiftcard');
   eq(toRelativeUrl('https://helpin.lifestylestores.com/support/home'), 'https://helpin.lifestylestores.com/support/home');

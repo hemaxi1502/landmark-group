@@ -4,7 +4,8 @@ import { useAnalytics, useOptimisticCart } from '@shopify/hydrogen';
 import { useAside } from '~/components/Aside';
 import { AnnouncementBar } from '~/components/AnnouncementBar';
 import { SearchSuggestPanel, useSearchSuggest, useGoToSearch } from '~/components/search/SearchSuggest';
-import { DesktopMegaMenu, MobileSubmenuList } from '~/components/MegaMenu';
+import { DesktopMegaMenu, MobileSubmenuList, menuPath } from '~/components/MegaMenu';
+import { departmentPath } from '~/lib/department';
 import { useLocalProductList } from '~/lib/local-list';
 import { AccountLink } from '~/components/AccountLink';
 import { linkForLabel, realUrl } from '~/lib/site-config';
@@ -596,6 +597,16 @@ export function HeaderMenu({
         </div>
 
         <div className="flex-1 overflow-y-auto">
+          {activeItem && departmentPath(menuPath(activeItem.url, { primaryDomainUrl, publicStoreDomain }))?.startsWith('/department/') && activeItem.items?.length > 0 && (
+            <NavLink
+              to={departmentPath(menuPath(activeItem.url, { primaryDomainUrl, publicStoreDomain }))}
+              onClick={close}
+              className="mx-4 mt-3 mb-1 flex items-center justify-between rounded-[2px] bg-[#FFF4E0] px-4 py-3 text-[14px] font-semibold text-black"
+            >
+              Explore {activeItem.title.replace(/\s*[[(]https?:\/\/.*$/, '').trim()}
+              <span aria-hidden="true">→</span>
+            </NavLink>
+          )}
           {activeItem?.items?.length > 0 ? (
             <MobileSubmenuList
               key={activeItem.id}
@@ -606,7 +617,7 @@ export function HeaderMenu({
           ) : (
              <div className="flex flex-col">
                <NavLink
-                  to={activeItem?.url || '/'}
+                  to={departmentPath(menuPath(activeItem?.url, { primaryDomainUrl, publicStoreDomain })) || '/'}
                   className="px-4 py-4 text-[14px] font-semibold text-[#000000] border-b border-gray-100 flex justify-between items-center hover:bg-gray-50"
                   onClick={close}
                 >

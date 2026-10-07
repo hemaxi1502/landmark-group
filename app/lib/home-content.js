@@ -142,11 +142,16 @@ export function toRelativeUrl(url) {
     if (parsed.hostname.endsWith('myshopify.com')) {
       return `${parsed.pathname}${parsed.search}`;
     }
-    if (/(^|\.)lifestylestores\.com$/.test(parsed.hostname) && !parsed.hostname.startsWith('help')) {
+    if (
+      /(^|\.)lifestylestores\.com$/.test(parsed.hostname) &&
+      !parsed.hostname.startsWith('help')
+    ) {
       const path = parsed.pathname.replace(/^\/in\/en(?=\/|$)/, '') || '/';
       if (path === '/') return '/';
       if (path === '/search') return `/search${parsed.search}`;
-      const match = path.match(/^\/(?:department|c)\/([a-z0-9-]+)\/?$/i);
+      const dept = path.match(/^\/department\/([a-z0-9-]+)\/?$/i);
+      if (dept) return `/department/${dept[1].toLowerCase()}`;
+      const match = path.match(/^\/c\/([a-z0-9-]+)\/?$/i);
       if (match && !/giftcard/i.test(match[1])) {
         return `/collections/${match[1].toLowerCase()}`;
       }

@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import {NavLink, useLocation} from 'react-router';
+import {departmentPath} from '~/lib/department';
 
 /**
  * Nested mega menu built from the Shopify "main-menu" (3 levels):
@@ -111,7 +112,7 @@ export function DesktopMegaMenu({
           return (
             <NavLink
               key={item.id}
-              to={to ?? '/'}
+              to={departmentPath(to) ?? '/'}
               end
               prefetch="intent"
               aria-haspopup={hasPanel ? 'true' : undefined}
