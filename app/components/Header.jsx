@@ -5,6 +5,7 @@ import { useAside } from '~/components/Aside';
 import { AnnouncementBar } from '~/components/AnnouncementBar';
 import { SearchSuggestPanel, useSearchSuggest, useGoToSearch } from '~/components/search/SearchSuggest';
 import { DesktopMegaMenu, MobileSubmenuList } from '~/components/MegaMenu';
+import { useLocalProductList } from '~/lib/local-list';
 
 const POPULAR_SEARCHES = [
   "Melange Kurta Set Women", "watch", "tops for women",
@@ -375,7 +376,7 @@ const MainHeader = ({ cart, isScrolled, metaobject }) => {
           )}
 
           <div className="flex items-stretch gap-1 lg:gap-3 h-full relative">
-            <a href={favoriteUrl} className="flex flex-col items-center justify-center cursor-pointer group hover:opacity-100 px-3 border-b-[3px] border-transparent hover:border-[#FAA619] transition-colors">
+            <WishlistLink url={favoriteUrl} text={favoriteText}>
               {favoriteIconUrl ? (
                 <img src={favoriteIconUrl} alt={favoriteText} className="w-[24px] h-[24px] group-hover:opacity-80" />
               ) : (
@@ -383,8 +384,7 @@ const MainHeader = ({ cart, isScrolled, metaobject }) => {
                   <path fillRule="evenodd" clipRule="evenodd" d="M614 170.294L620.976 163.125C622.26 161.805 622.26 159.666 620.976 158.346C619.692 157.026 617.61 157.026 616.325 158.346L614.581 160.138C614.26 160.468 613.74 160.468 613.419 160.138L611.675 158.346C610.391 157.026 608.308 157.026 607.024 158.346C605.74 159.666 605.74 161.805 607.024 163.125L614 170.294ZM614 158.346L615.163 157.151C617.089 155.172 620.212 155.172 622.139 157.151C624.065 159.131 624.065 162.34 622.139 164.32L614.581 172.086C614.26 172.416 613.74 172.416 613.419 172.086L605.862 164.32C603.935 162.34 603.935 159.131 605.862 157.151C607.788 155.172 610.911 155.172 612.837 157.151L614 158.346Z" fill="#000000"/>
                 </svg>
               )}
-              <span className="hidden lg:block text-[10px] mt-1 font-semibold text-[#000000] group-hover:opacity-80">{favoriteText}</span>
-            </a>
+            </WishlistLink>
 
             <CartToggle cart={cart} customIconUrl={cartIconUrl} customText={cartText} customUrl={cartUrl} />
 
@@ -687,6 +687,32 @@ function SearchToggle() {
     <button className="reset" onClick={() => open('search')}>
       Search
     </button>
+  );
+}
+
+/**
+ * Header Favourites link with a live count of wishlisted products. The list
+ * lives in the browser (localStorage) and updates on every heart toggle.
+ */
+function WishlistLink({ url, text, children }) {
+  const { items } = useLocalProductList('wishlist');
+  const count = items.length;
+  return (
+    <a
+      href={url}
+      aria-label={count > 0 ? `${text} (${count} item${count === 1 ? '' : 's'})` : text}
+      className="flex flex-col items-center justify-center cursor-pointer group hover:opacity-100 px-3 border-b-[3px] border-transparent hover:border-[#FAA619] transition-colors"
+    >
+      <div className="relative group-hover:opacity-80">
+        {children}
+        {count > 0 && (
+          <div aria-hidden="true" className="absolute top-0 right-0 bg-[#FAA619] text-[#FFFFFF] rounded-full min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-bold -mt-1 lg:-mr-1 -mr-2">
+            {count > 99 ? '99+' : count}
+          </div>
+        )}
+      </div>
+      <span className="hidden lg:block text-[10px] mt-1 font-semibold text-[#000000] group-hover:opacity-80">{text}</span>
+    </a>
   );
 }
 
