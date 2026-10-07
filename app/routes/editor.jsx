@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useMemo, useState} from 'react';
 import {Form, Link, useFetcher, useLoaderData} from 'react-router';
 import {
   AdminConfigError,
@@ -12,6 +12,17 @@ import {
   planUpdates,
   uploadImage,
 } from '~/lib/editor-content.server';
+import {
+  isAuthed,
+  safeEqual,
+  SESSION_HOURS,
+  SESSION_KEY,
+} from '~/lib/editor-auth.server';
+import {
+  EditorTabs,
+  ImageSlot,
+  MoveButtons,
+} from '~/components/editor/EditorParts';
 import {Icon} from '~/components/ui/Icon';
 
 /**
@@ -26,9 +37,6 @@ import {Icon} from '~/components/ui/Icon';
  * in the Oxygen environment.
  */
 
-const SESSION_KEY = 'editorAuthUntil';
-const SESSION_HOURS = 8;
-
 export const meta = () => [
   {title: 'Homepage editor | Lifestyle Stores'},
   {name: 'robots', content: 'noindex, nofollow'},
@@ -40,21 +48,6 @@ export const headers = () => ({'Cache-Control': 'no-store'});
 export function shouldRevalidate({formData, defaultShouldRevalidate}) {
   if (formData?.get('intent') === 'upload') return false;
   return defaultShouldRevalidate;
-}
-
-function isAuthed(session) {
-  return Number(session.get(SESSION_KEY) ?? 0) > Date.now();
-}
-
-/** Constant-time string compare so the password check doesn't leak timing. */
-function safeEqual(a, b) {
-  const x = String(a ?? '');
-  const y = String(b ?? '');
-  let diff = x.length ^ y.length;
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    diff |= (x.charCodeAt(i) || 0) ^ (y.charCodeAt(i) || 0);
-  }
-  return diff === 0;
 }
 
 /** @param {Route.LoaderArgs} */
@@ -385,6 +378,7 @@ function EditorView({tree, save, open, setOpen}) {
 
   return (
     <div>
+      <EditorTabs />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold md:text-2xl">Homepage editor</h1>
@@ -705,126 +699,6 @@ function ItemRow({item, position, editOf, setEdit, moveButtons}) {
 
       {moveButtons && <div className="shrink-0 pt-1">{moveButtons}</div>}
     </li>
-  );
-}
-
-/**
- * One image field: shows the current (or newly uploaded) picture and a
- * Replace button. The file goes to Shopify Files straight away; the field
- * only changes on the live site after Save.
- */
-function ImageSlot({itemId, field, alt, edit, onUploaded}) {
-  const fetcher = useFetcher({key: `upload-${itemId}-${field.key}`});
-  const input = useRef(null);
-  const [preview, setPreview] = useState(null);
-  const busy = fetcher.state !== 'idle';
-  const result = fetcher.data?.upload;
-
-  // Act only when an upload finishes (not when the editor re-mounts after a
-  // save and the finished fetcher still holds its old result).
-  const lastState = useRef(fetcher.state);
-  useEffect(() => {
-    const finished = lastState.current !== 'idle' && fetcher.state === 'idle';
-    lastState.current = fetcher.state;
-    if (!finished) return;
-    if (result?.id) onUploaded(result);
-    else if (result?.error) setPreview(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher.state]);
-
-  useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
-
-  const src = edit?.url || preview || field.url;
-  const thumb =
-    src && !src.startsWith('blob:')
-      ? `${src}${src.includes('?') ? '&' : '?'}width=240`
-      : src;
-
-  const onPick = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPreview(URL.createObjectURL(file));
-    const data = new FormData();
-    data.set('intent', 'upload');
-    data.set('alt', alt ?? '');
-    data.set('file', file);
-    fetcher.submit(data, {method: 'post', encType: 'multipart/form-data'});
-    e.target.value = '';
-  };
-
-  return (
-    <div className="w-24">
-      <div className="relative aspect-square overflow-hidden rounded border border-line bg-surface">
-        {thumb ? (
-          <img src={thumb} alt="" className="h-full w-full object-contain" />
-        ) : (
-          <span className="flex h-full items-center justify-center text-[10px] text-muted">
-            No image
-          </span>
-        )}
-        {busy && (
-          <span className="absolute inset-0 flex items-center justify-center bg-white/80 text-[11px] font-semibold">
-            Uploading…
-          </span>
-        )}
-        {edit?.id && !busy && (
-          <span className="absolute top-1 left-1 rounded bg-brand px-1 text-[9px] font-bold text-white">
-            NEW
-          </span>
-        )}
-      </div>
-      <p className="mt-1 truncate text-[10px] text-muted" title={field.label}>
-        {field.label}
-        {edit?.width ? ` · ${edit.width}px` : ''}
-      </p>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => input.current?.click()}
-        className="mt-0.5 w-full rounded border border-line py-1 text-[11px] font-semibold hover:bg-surface disabled:opacity-40"
-      >
-        Replace
-      </button>
-      <input
-        ref={input}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-        className="hidden"
-        onChange={onPick}
-      />
-      {result?.error && (
-        <p className="mt-1 text-[10px] text-danger" role="alert">
-          {result.error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function MoveButtons({label, first, last, onMove}) {
-  const cls =
-    'flex h-8 w-8 items-center justify-center rounded border border-line hover:bg-surface disabled:opacity-30';
-  return (
-    <div className="flex shrink-0 gap-1">
-      <button
-        type="button"
-        disabled={first}
-        onClick={() => onMove(-1)}
-        aria-label={`Move ${label} up`}
-        className={cls}
-      >
-        <Icon name="chevronDown" className="h-4 w-4 rotate-180" />
-      </button>
-      <button
-        type="button"
-        disabled={last}
-        onClick={() => onMove(1)}
-        aria-label={`Move ${label} down`}
-        className={cls}
-      >
-        <Icon name="chevronDown" className="h-4 w-4" />
-      </button>
-    </div>
   );
 }
 

@@ -1,11 +1,20 @@
 import {useLoaderData} from 'react-router';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 import {StaticPage} from '~/components/StaticPage';
+import {Breadcrumb} from '~/components/ui/Breadcrumb';
+import {PageBlocks} from '~/components/page-builder/PageBlocks';
+import {loadPageLayout} from '~/lib/page-builder.server';
 
 /**
  * @type {Route.MetaFunction}
  */
 export const meta = ({data}) => {
+  if (data?.layout) {
+    return [
+      {title: `${data.layout.title} | Lifestyle`},
+      {name: 'description', content: data.layout.description ?? ''},
+    ];
+  }
   return [
     {title: `${data?.page.seo?.title || data?.page.title || ''} | Lifestyle`},
     {name: 'description', content: data?.page.seo?.description ?? ''},
@@ -35,14 +44,20 @@ async function loadCriticalData({context, request, params}) {
     throw new Error('Missing page handle');
   }
 
-  const [{page}] = await Promise.all([
+  const [{page}, layout] = await Promise.all([
     context.storefront.query(PAGE_QUERY, {
       variables: {
         handle: params.handle,
       },
     }),
-    // Add other queries here, so that they are loaded in parallel
+    // A page built in /editor → Pages with the same handle wins.
+    loadPageLayout(context.storefront, params.handle).catch((error) => {
+      console.error('Page layout', error);
+      return null;
+    }),
   ]);
+
+  if (layout) return {layout};
 
   if (!page) {
     throw new Response('Not Found', {status: 404});
@@ -67,8 +82,19 @@ function loadDeferredData({context}) {
 
 export default function Page() {
   /** @type {LoaderReturnData} */
-  const {page} = useLoaderData();
+  const {page, layout} = useLoaderData();
 
+  if (layout) {
+    return (
+      <div className="pb-12">
+        <div className="container-site">
+          <Breadcrumb items={[{label: layout.title}]} />
+          <h1 className="sr-only">{layout.title}</h1>
+        </div>
+        <PageBlocks blocks={layout.blocks} />
+      </div>
+    );
+  }
   return <StaticPage title={page.title} html={page.body} />;
 }
 

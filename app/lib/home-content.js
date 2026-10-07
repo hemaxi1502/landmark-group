@@ -362,7 +362,10 @@ export async function buildHomeSections(rawSections, fetchNodes) {
  * @param {{skipHandles?: string[]}} [options]
  * @returns {Promise<{order: Array<{handle: string, order: number}>, sections: Array<object>}>}
  */
-export async function loadHomeSections(storefront, {skipHandles = []} = {}) {
+export async function loadHomeSections(
+  storefront,
+  {skipHandles = [], includeHidden = false} = {},
+) {
   const cache = storefront.CacheShort();
   const {sections} = await storefront.query(HOME_SECTIONS_QUERY, {cache});
   const fetchNodes = async (ids) => {
@@ -374,7 +377,9 @@ export async function loadHomeSections(storefront, {skipHandles = []} = {}) {
   };
   const skip = new Set(skipHandles);
   // Sections switched off in the editor (or in admin: "Hide section").
-  const visible = sections.nodes.filter((n) => n.hidden?.value !== 'true');
+  const visible = includeHidden
+    ? sections.nodes
+    : sections.nodes.filter((n) => n.hidden?.value !== 'true');
   const order = visible
     .map((n) => ({handle: n.handle, order: Number(n.order?.value ?? 999)}))
     .sort((x, y) => x.order - y.order);

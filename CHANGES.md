@@ -139,3 +139,36 @@ an Admin API token. `SHOPIFY_ADMIN_GRAPHQL_URL` is for local testing against a m
 as stored. Most point at `landmarkgroup-store.myshopify.com` (a different
 store), so tiles sent shoppers off-site. They now go through `toRelativeUrl`,
 and Showcase banners also use the banner's own `url` field.
+
+## Page builder — `/editor/pages`
+
+Build pages from ready-made blocks without a developer. Same password as `/editor`; the **Homepage | Pages** tabs switch between the two editors.
+
+### For the content team
+1. Open `/editor/pages` → **Create a page**.
+   - **Landing page**: give it a title (e.g. "Diwali Sale"). It goes live at `/pages/diwali-sale`.
+   - **Department page**: pick a department. It replaces the automatic page at `/department/<name>`. Add the **Department (automatic)** block to keep the automatic layout and put your own blocks above/below it. Delete the page to go back to the automatic one.
+2. **Add a block** from the library, fill in its settings (blocks marked *Needs setup* don't show on the site until they have what they need).
+3. Use the arrows to reorder, **Show** to hide/show, **Remove** to delete a block.
+4. **Save** — the page updates on the site straight away. **View page ↗** opens it.
+5. Link to the page from a menu (Shopify admin → Content → Menus) or a homepage banner in `/editor`.
+
+| Block | Settings | Uses |
+|---|---|---|
+| Banner | desktop + mobile image, link, alt text | homepage banner component |
+| Product carousel | heading, collection, number of products | department/PDP product row |
+| Product grid | heading, collection, number of products | category page grid |
+| Category tiles | heading, up to 12 collections | department category tiles |
+| Brand tiles | heading, collection | department brand tiles |
+| Shop by price | heading, collection | department price bands |
+| Text | heading, paragraph, button link | — |
+| Homepage section | any homepage section (hero, Top Categories, …) | the homepage section itself |
+| Department (automatic) | collection | the whole automatic department page |
+
+Example: `/pages/festive-sale` (8 blocks) was built this way.
+
+### For developers
+- Data: metaobjects `page_layout` (handle = address, `title`, `description`, `sections`) and `page_section` (`kind` + settings). Storefront read access is public; writes go through the editor app (Admin API).
+- `lib/page-builder.js` — `BLOCK_TYPES` (the block library) + parsing; `lib/page-builder.server.js` — storefront loading; `lib/page-builder-admin.server.js` — editor reads/writes + validation; `components/page-builder/PageBlocks.jsx` — rendering; `routes/editor_.pages.jsx` — the editor.
+- **Add a block type**: add an entry to `BLOCK_TYPES` (label, description, fields), a `case` in `PageBlocks`, and a `case` in `resolveBlock` if it needs data; then add the kind to the `page_section` definition's "Block type" choices in Shopify admin.
+- Only page-agnostic components are blocks. Product-page parts (gallery, size chart, add to basket) and the filter sidebar need their page's context and aren't offered.
