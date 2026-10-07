@@ -35,6 +35,7 @@ import {
   ImageSlot,
   MoveButtons,
 } from '~/components/editor/EditorParts';
+import {BlockThumbnail} from '~/components/editor/BlockThumbnails';
 
 /**
  * /editor/pages — the page builder. Create landing pages (/pages/<name>),
@@ -752,7 +753,10 @@ function BlockCard({
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface text-xs font-bold">
           {index + 1}
         </span>
-        <BlockPreview kind={block.kind} className="hidden h-14 w-24 sm:flex" />
+        <BlockThumbnail
+          kind={block.kind}
+          className="hidden h-[60px] w-[100px] sm:block"
+        />
         <button
           type="button"
           onClick={() => setOpen(!isOpen)}
@@ -809,7 +813,7 @@ function BlockCard({
       {isOpen && type && (
         <div className="grid gap-4 border-t border-line p-4 md:grid-cols-2">
           <div className="flex gap-3 md:col-span-2">
-            <BlockPreview kind={block.kind} className="h-16 w-28 shrink-0" />
+            <BlockThumbnail kind={block.kind} className="h-[84px] w-[140px]" />
             <p className="text-xs text-muted">
               {type.description}
               {block.hidden && missing && (
@@ -836,130 +840,6 @@ function BlockCard({
     </li>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* Layout previews: a small wireframe of what each block looks like     */
-/* ------------------------------------------------------------------ */
-
-const box = 'rounded-[2px] bg-gray-300';
-
-function BlockPreview({kind, className = ''}) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`flex shrink-0 flex-col justify-center gap-1 overflow-hidden rounded border border-line bg-white p-1.5 ${className}`}
-    >
-      {PREVIEWS[kind] ?? null}
-    </span>
-  );
-}
-
-const Row = ({n, h = 'h-6', cls = ''}) => (
-  <span className="flex flex-1 gap-0.5">
-    {Array.from({length: n}, (_, i) => (
-      <span key={i} className={`${box} ${h} flex-1 ${cls}`} />
-    ))}
-  </span>
-);
-const Line = ({w = 'w-1/2', cls = ''}) => (
-  <span className={`block h-1 rounded bg-gray-400 ${w} ${cls}`} />
-);
-
-const PREVIEWS = {
-  banner: (
-    <span
-      className={`${box} relative flex flex-1 items-center justify-center bg-gradient-to-br from-amber-200 to-orange-300`}
-    >
-      <span className="h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-white/90" />
-    </span>
-  ),
-  product_carousel: (
-    <>
-      <Line w="w-1/3" />
-      <span className="flex flex-1 items-stretch gap-0.5">
-        <span className="self-center text-[8px] leading-none text-gray-500">
-          ‹
-        </span>
-        <Row n={4} h="h-full" />
-        <span className="self-center text-[8px] leading-none text-gray-500">
-          ›
-        </span>
-      </span>
-    </>
-  ),
-  product_grid: (
-    <>
-      <Line w="w-1/3" />
-      <Row n={4} h="h-full" />
-      <Row n={4} h="h-full" />
-    </>
-  ),
-  category_tiles: (
-    <>
-      <Line w="w-1/3" />
-      <Row n={6} h="h-full" />
-      <span className="flex gap-0.5">
-        {Array.from({length: 6}, (_, i) => (
-          <span key={i} className="h-0.5 flex-1 rounded bg-gray-400" />
-        ))}
-      </span>
-    </>
-  ),
-  brand_tiles: (
-    <>
-      <Line w="w-1/3" />
-      <Row n={3} h="h-full" cls="rounded-full" />
-      <Row n={3} h="h-full" cls="rounded-full" />
-    </>
-  ),
-  price_bands: (
-    <>
-      <Line w="w-1/3" />
-      <span className="flex flex-1 gap-0.5">
-        {['499', '999', '1999', '2999'].map((p) => (
-          <span
-            key={p}
-            className="flex flex-1 items-center justify-center rounded-[2px] bg-amber-100 text-[7px] font-bold text-amber-800"
-          >
-            ₹
-          </span>
-        ))}
-      </span>
-    </>
-  ),
-  text: (
-    <span className="flex flex-1 flex-col items-center justify-center gap-1">
-      <Line w="w-1/2" cls="h-1.5 bg-gray-500" />
-      <Line w="w-3/4" />
-      <Line w="w-2/3" />
-      <span className="mt-0.5 h-2 w-1/4 rounded-[2px] bg-gray-700" />
-    </span>
-  ),
-  home_section: (
-    <span className="flex flex-1 flex-col gap-0.5">
-      <span className="flex items-center gap-1 text-[7px] font-bold uppercase text-gray-500">
-        ⌂ Home
-      </span>
-      <span
-        className={`${box} flex-1 bg-gradient-to-r from-gray-300 to-gray-200`}
-      />
-      <Row n={5} h="h-3" />
-    </span>
-  ),
-  department: (
-    <span className="flex flex-1 flex-col gap-0.5">
-      <span className="flex flex-1 gap-0.5">
-        <span className="flex flex-1 flex-col justify-center gap-0.5 rounded-[2px] bg-gray-100 px-1">
-          <Line w="w-3/4" cls="h-1.5 bg-gray-500" />
-          <Line w="w-1/2" />
-        </span>
-        <Row n={3} h="h-full" />
-      </span>
-      <Row n={6} h="h-2.5" />
-      <Row n={5} h="h-3" />
-    </span>
-  ),
-};
 
 function FieldInput({field, label, block, d, onValue, onUpload}) {
   const info = FIELD_INFO[field];
@@ -1272,19 +1152,24 @@ function AddBlock({onAdd}) {
     <section className="mt-6 rounded border border-line p-4">
       <h2 className="text-base font-bold">Add a block</h2>
       <p className="mt-0.5 text-xs text-muted">
-        The picture next to each block shows its layout on the page.
+        Each picture shows how the block looks on the page. Click one to add it.
       </p>
-      <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {Object.entries(BLOCK_TYPES).map(([kind, t]) => (
           <li key={kind}>
             <button
               type="button"
               onClick={() => onAdd(kind)}
-              className="flex h-full w-full gap-3 rounded border border-line p-3 text-left hover:border-ink hover:bg-surface"
+              className="group flex h-full w-full flex-col overflow-hidden rounded-md border border-line text-left transition hover:-translate-y-0.5 hover:border-[#FAA619] hover:shadow-md"
             >
-              <BlockPreview kind={kind} className="h-16 w-28" />
-              <span>
-                <span className="block text-sm font-bold">+ {t.label}</span>
+              <BlockThumbnail
+                kind={kind}
+                className="aspect-[160/96] w-full rounded-none border-0 border-b bg-[#FAFAFB]"
+              />
+              <span className="block p-3">
+                <span className="block text-sm font-bold group-hover:text-[#B86E00]">
+                  + {t.label}
+                </span>
                 <span className="mt-0.5 block text-xs text-muted">
                   {t.description}
                 </span>
