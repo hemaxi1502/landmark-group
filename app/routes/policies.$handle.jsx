@@ -1,10 +1,18 @@
-import {Link, useLoaderData} from 'react-router';
+import {redirect, useLoaderData} from 'react-router';
+import {StaticPage} from '~/components/StaticPage';
+
+/** Pages used while a policy isn't set in Settings → Policies. */
+const PAGE_FALLBACK = {
+  refundPolicy: '/pages/returns',
+  shippingPolicy: '/pages/shipping',
+  termsOfService: '/pages/terms-and-conditions',
+};
 
 /**
  * @type {Route.MetaFunction}
  */
 export const meta = ({data}) => {
-  return [{title: `Hydrogen | ${data?.policy.title ?? ''}`}];
+  return [{title: `${data?.policy.title ?? 'Policy'} | Lifestyle`}];
 };
 
 /**
@@ -33,6 +41,7 @@ export async function loader({params, context}) {
   const policy = data.shop?.[policyName];
 
   if (!policy) {
+    if (PAGE_FALLBACK[policyName]) throw redirect(PAGE_FALLBACK[policyName]);
     throw new Response('Could not find the policy', {status: 404});
   }
 
@@ -43,18 +52,7 @@ export default function Policy() {
   /** @type {LoaderReturnData} */
   const {policy} = useLoaderData();
 
-  return (
-    <div className="policy">
-      <br />
-      <br />
-      <div>
-        <Link to="/policies">← Back to Policies</Link>
-      </div>
-      <br />
-      <h1>{policy.title}</h1>
-      <div dangerouslySetInnerHTML={{__html: policy.body}} />
-    </div>
-  );
+  return <StaticPage title={policy.title} html={policy.body} />;
 }
 
 // NOTE: https://shopify.dev/docs/api/storefront/latest/objects/Shop

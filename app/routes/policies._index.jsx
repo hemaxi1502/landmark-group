@@ -1,4 +1,7 @@
 import {useLoaderData, Link} from 'react-router';
+import {StaticPage} from '~/components/StaticPage';
+
+export const meta = () => [{title: 'Policies | Lifestyle'}];
 
 /**
  * @param {Route.LoaderArgs}
@@ -27,16 +30,32 @@ export default function Policies() {
   const {policies} = useLoaderData();
 
   return (
-    <div className="policies">
-      <h1>Policies</h1>
-      <div>
-        {policies.map((policy) => (
-          <fieldset key={policy.id}>
-            <Link to={`/policies/${policy.handle}`}>{policy.title}</Link>
-          </fieldset>
-        ))}
-      </div>
-    </div>
+    <StaticPage title="Policies">
+      <ul className="max-w-xl divide-y divide-gray-200 border-y border-gray-200">
+        {[
+          ...policies.map((p) => ({
+            to: `/policies/${p.handle}`,
+            title: p.title,
+          })),
+          {to: '/pages/terms-and-conditions', title: 'Terms & Conditions'},
+          {to: '/pages/returns', title: 'Returns & Refunds'},
+          {to: '/pages/shipping', title: 'Shipping & Delivery'},
+        ]
+          .filter(
+            (x, i, all) => all.findIndex((y) => y.title === x.title) === i,
+          )
+          .map((x) => (
+            <li key={x.to}>
+              <Link
+                to={x.to}
+                className="flex items-center justify-between py-3 text-[15px] hover:text-[#FAA619]"
+              >
+                {x.title} <span aria-hidden="true">→</span>
+              </Link>
+            </li>
+          ))}
+      </ul>
+    </StaticPage>
   );
 }
 

@@ -344,7 +344,7 @@ function CartCoupons({discountCodes, compact}) {
       >
         <span className="flex items-center gap-2">
           <Icon name="tag" className="h-4 w-4 text-brand" />
-          {compact && applied.length > 0 ? (
+          {compact && applied.length > 0 && !open ? (
             <span className="text-success">{applied.join(', ')} applied</span>
           ) : (
             'Apply coupon'

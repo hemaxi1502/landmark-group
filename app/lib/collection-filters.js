@@ -54,10 +54,23 @@ export function getFilters(searchParams) {
   }
   return filters;
 }
+/**
+ * Canonical form of a filter input. Shopify's inputs escape slashes ("\/"),
+ * and the backslash gets URL-encoded differently on the server and in the
+ * browser (hydration mismatch), so compare and store the re-serialised JSON.
+ */
+export function normFilter(input) {
+  try {
+    return JSON.stringify(JSON.parse(input));
+  } catch {
+    return input;
+  }
+}
 /** Returns a new search string with a filter toggled on/off and pagination reset. */
-export function toggleFilterParam(searchParams, input) {
+export function toggleFilterParam(searchParams, rawInput) {
+  const input = normFilter(rawInput);
   const next = new URLSearchParams(searchParams);
-  const current = next.getAll('filter');
+  const current = next.getAll('filter').map(normFilter);
   next.delete('filter');
   const exists = current.includes(input);
   for (const f of current) if (f !== input) next.append('filter', f);

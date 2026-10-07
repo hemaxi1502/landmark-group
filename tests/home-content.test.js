@@ -294,7 +294,7 @@ test('builds every section type from the real store shapes', async () => {
     ['B1G1', 'Festive'],
   );
   assert.ok(hero.lists.slides[0].mobileImage?.url.includes('img2'));
-  assert.equal(hero.lists.slides[0].href, '/in/en/search?q=b1g1');
+  assert.equal(hero.lists.slides[0].href, '/search?q=b1g1');
   assert.equal(hero.lists.slides[1].href, '/collections/women');
   // Standalone banner + separate mobile banner from home_page.mobile_banner
   assert.equal(offer.dataType, 'banners');
@@ -334,4 +334,16 @@ test('relative URL handling', () => {
   assert.equal(toRelativeUrl('#'), undefined);
   assert.equal(toRelativeUrl('https://example.com/a'), 'https://example.com/a');
   assert.equal(toRelativeUrl(null), undefined);
+});
+
+test('toRelativeUrl maps lifestylestores.com links it can, keeps the rest external', async () => {
+  const {toRelativeUrl} = await import('../app/lib/home-content.js');
+  const eq = (await import('node:assert/strict')).equal;
+  eq(toRelativeUrl('https://www.lifestylestores.com/in/en/'), '/');
+  eq(toRelativeUrl('https://www.lifestylestores.com/in/en/department/women'), '/collections/women');
+  eq(toRelativeUrl('https://www.lifestylestores.com/in/en/storelocator'), 'https://www.lifestylestores.com/in/en/storelocator');
+  eq(toRelativeUrl('https://www.lifestylestores.com/in/en/c/lifestylegiftcard'), 'https://www.lifestylestores.com/in/en/c/lifestylegiftcard');
+  eq(toRelativeUrl('https://helpin.lifestylestores.com/support/home'), 'https://helpin.lifestylestores.com/support/home');
+  eq(toRelativeUrl('https://landmarkgroup-store.myshopify.com/collections/men?x=1'), '/collections/men?x=1');
+  eq(toRelativeUrl('https://landmarkgroup-store.myshopify.com#'), undefined);
 });

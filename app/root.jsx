@@ -1,3 +1,4 @@
+import {useEffect} from 'react';
 import {Analytics, getShopAnalytics, useNonce} from '@shopify/hydrogen';
 import {
   Outlet,
@@ -131,11 +132,12 @@ async function loadCriticalData({context}) {
     }
   `;
 
-  const { metaobject } = await storefront.query(METAOBJECT_QUERY, {
+  const {metaobject} = await storefront.query(METAOBJECT_QUERY, {
     cache: storefront.CacheNone(),
   });
 
-  const menuField = metaobject?.fields?.find(f => f.key === 'menu')?.value || 'Main menu';
+  const menuField =
+    metaobject?.fields?.find((f) => f.key === 'menu')?.value || 'Main menu';
   const headerMenuHandle = menuField.toLowerCase().replace(/\s+/g, '-');
 
   const [header] = await Promise.all([
@@ -228,6 +230,7 @@ export default function App() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
+  const data = useRouteLoaderData('root');
   let errorMessage = 'Unknown error';
   let errorStatus = 500;
 
@@ -237,17 +240,82 @@ export function ErrorBoundary() {
   } else if (error instanceof Error) {
     errorMessage = error.message;
   }
+  const notFound = errorStatus === 404;
 
-  return (
-    <div className="route-error">
-      <h1>Oops</h1>
-      <h2>{errorStatus}</h2>
-      {errorMessage && (
-        <fieldset>
-          <pre>{errorMessage}</pre>
-        </fieldset>
+  useEffect(() => {
+    document.title = notFound
+      ? 'Page not found | Lifestyle'
+      : 'Something went wrong | Lifestyle';
+  }, [notFound]);
+
+  const content = (
+    <div className="page-width flex flex-col items-center py-16 text-center md:py-24">
+      <p className="text-[56px] font-bold leading-none text-[#FAA619]">
+        {errorStatus}
+      </p>
+      <h1 className="mt-4 text-[22px] font-bold md:text-[26px]">
+        {notFound ? "We can't find that page" : 'Something went wrong'}
+      </h1>
+      <p className="mt-2 max-w-md text-[15px] text-gray-600">
+        {notFound
+          ? 'The link may be old or the page may have moved. Try searching, or start from one of these.'
+          : 'Please try again in a moment. If it keeps happening, contact us.'}
+      </p>
+      {notFound && (
+        <form action="/search" className="mt-6 flex w-full max-w-md gap-2">
+          <label htmlFor="notfound-q" className="sr-only">
+            Search
+          </label>
+          <input
+            id="notfound-q"
+            name="q"
+            type="search"
+            placeholder="What are you looking for?"
+            className="h-11 min-w-0 flex-1 rounded-[2px] border border-gray-300 px-3 text-[14px]"
+          />
+          <button
+            type="submit"
+            className="h-11 rounded-[2px] bg-black px-5 text-[14px] font-semibold text-white"
+          >
+            Search
+          </button>
+        </form>
+      )}
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        {[
+          ['/', 'Home'],
+          ['/collections/women', 'Women'],
+          ['/collections/men', 'Men'],
+          ['/collections/kids', 'Kids'],
+          ['/pages/contact', 'Contact us'],
+        ].map(([to, label]) => (
+          <a
+            key={to}
+            href={to}
+            className="rounded-[2px] border border-black px-4 py-2 text-[14px] font-semibold hover:bg-gray-50"
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+      {/* Technical details only in development. */}
+      {import.meta.env.DEV && errorMessage && !notFound && (
+        <pre className="mt-8 max-w-full overflow-x-auto rounded bg-gray-100 p-3 text-left text-[12px]">
+          {String(errorMessage)}
+        </pre>
       )}
     </div>
+  );
+
+  if (!data) return content;
+  return (
+    <Analytics.Provider
+      cart={data.cart}
+      shop={data.shop}
+      consent={data.consent}
+    >
+      <PageLayout {...data}>{content}</PageLayout>
+    </Analytics.Provider>
   );
 }
 

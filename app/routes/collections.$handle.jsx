@@ -53,8 +53,19 @@ export async function loader({context, params, request}) {
     throw new Response(`Collection ${handle} not found`, {status: 404});
   }
   redirectIfHandleIsLocalized(request, {handle, data: collection});
+  // An empty collection (not just filtered to nothing) shows best sellers instead.
+  const isEmpty =
+    !collection.products.nodes.length && !filters.length && !cursor;
+  const fallback = isEmpty
+    ? await storefront
+        .query(FALLBACK_PRODUCTS_QUERY, {cache: storefront.CacheShort()})
+        .then((d) => d.products.nodes)
+        .catch(() => [])
+    : [];
   return {
     collection,
+    fallback,
+    hasFilters: filters.length > 0,
     sort,
     faqs: parseFaqs(collection.faq?.value),
     popularSearches:
@@ -67,7 +78,8 @@ export async function loader({context, params, request}) {
   };
 }
 export default function Collection() {
-  const {collection, sort, faqs, popularSearches} = useLoaderData();
+  const {collection, sort, faqs, popularSearches, fallback, hasFilters} =
+    useLoaderData();
   const root = useRouteLoaderData('root');
   const {crumbs, pills} = useMenuContext(
     collection.handle,
@@ -108,10 +120,18 @@ export default function Collection() {
                 />
               ))}
             </div>
+          ) : hasFilters ? (
+            <div className="py-20 text-center">
+              <p className="text-muted">No products match these filters.</p>
+              <a
+                href={`/collections/${collection.handle}`}
+                className="mt-3 inline-block text-sm font-semibold underline"
+              >
+                Clear all filters
+              </a>
+            </div>
           ) : (
-            <p className="py-20 text-center text-muted">
-              No products match these filters.
-            </p>
+            <EmptyCollection title={collection.title} products={fallback} />
           )}
 
           <PlpPagination pageInfo={products.pageInfo} />
@@ -157,6 +177,42 @@ function useMenuContext(handle, title, root) {
   }
   return {crumbs: [{label: title}], pills: []};
 }
+function EmptyCollection({title, products}) {
+  return (
+    <div>
+      <div className="rounded-[2px] bg-[#F7F8F7] px-6 py-10 text-center">
+        <p className="text-lg font-bold">{title} is coming soon</p>
+        <p className="mt-1 text-sm text-muted">
+          We&apos;re adding new styles here. Meanwhile, take a look at our best
+          sellers.
+        </p>
+      </div>
+      {products.length > 0 && (
+        <>
+          <h2 className="mb-4 mt-8 text-lg font-bold">Best sellers</h2>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-3 md:gap-x-5 xl:grid-cols-4">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} loading="lazy" />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const FALLBACK_PRODUCTS_QUERY = `#graphql
+  ${PRODUCT_CARD_FRAGMENT}
+  query EmptyCollectionFallback($country: CountryCode, $language: LanguageCode)
+  @inContext(country: $country, language: $language) {
+    products(first: 8, sortKey: BEST_SELLING) {
+      nodes {
+        ...ProductCard
+      }
+    }
+  }
+`;
+
 const COLLECTION_PLP_QUERY = `#graphql
   ${PRODUCT_CARD_FRAGMENT}
   query CollectionPlp(

@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {Form, Link, useLocation, useNavigation} from 'react-router';
-import {toggleFilterParam} from '~/lib/collection-filters';
+import {normFilter, toggleFilterParam} from '~/lib/collection-filters';
 import {Icon} from '~/components/ui/Icon';
 /**
  * PLP · Filter Sidebar.
@@ -84,7 +84,7 @@ export function FilterSidebar({filters}) {
   );
 }
 function FilterPanel({filters, params, activeCount, onNavigate}) {
-  const active = new Set(params.getAll('filter'));
+  const active = new Set(params.getAll('filter').map(normFilter));
   const navigation = useNavigation();
   const clearAll = new URLSearchParams(params);
   ['filter', 'price_min', 'price_max', 'cursor', 'direction', 'page'].forEach(
@@ -125,7 +125,7 @@ function FilterPanel({filters, params, activeCount, onNavigate}) {
             </summary>
             <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
               {filter.values.map((value) => {
-                const checked = active.has(value.input);
+                const checked = active.has(normFilter(value.input));
                 return (
                   <li key={value.id}>
                     <Link
@@ -212,9 +212,10 @@ export function ActiveFilterChips({filters}) {
   const params = new URLSearchParams(search);
   const labels = new Map();
   for (const f of filters)
-    for (const v of f.values) labels.set(v.input, v.label);
+    for (const v of f.values) labels.set(normFilter(v.input), v.label);
   const chips = params
     .getAll('filter')
+    .map(normFilter)
     .map((input) => ({input, label: labels.get(input) ?? 'Filter'}));
   const min = params.get('price_min');
   const max = params.get('price_max');

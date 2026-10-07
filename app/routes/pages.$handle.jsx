@@ -1,11 +1,15 @@
 import {useLoaderData} from 'react-router';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
+import {StaticPage} from '~/components/StaticPage';
 
 /**
  * @type {Route.MetaFunction}
  */
 export const meta = ({data}) => {
-  return [{title: `Hydrogen | ${data?.page.title ?? ''}`}];
+  return [
+    {title: `${data?.page.seo?.title || data?.page.title || ''} | Lifestyle`},
+    {name: 'description', content: data?.page.seo?.description ?? ''},
+  ];
 };
 
 /**
@@ -65,14 +69,7 @@ export default function Page() {
   /** @type {LoaderReturnData} */
   const {page} = useLoaderData();
 
-  return (
-    <div className="page">
-      <header>
-        <h1>{page.title}</h1>
-      </header>
-      <main dangerouslySetInnerHTML={{__html: page.body}} />
-    </div>
-  );
+  return <StaticPage title={page.title} html={page.body} />;
 }
 
 const PAGE_QUERY = `#graphql

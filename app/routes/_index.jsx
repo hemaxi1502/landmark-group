@@ -96,6 +96,9 @@ export default function Homepage() {
 
   return (
     <div className="flex w-full flex-col gap-8 pb-12">
+      <h1 className="sr-only">
+        Lifestyle: online shopping for women, men, kids, beauty and home
+      </h1>
       {data.isShopLinked ? null : <MockShopNotice />}
       {order.map((handle, i) => {
         const existing = EXISTING_SECTIONS[handle];

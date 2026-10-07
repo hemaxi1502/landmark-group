@@ -43,7 +43,7 @@ export const PDP_SERVICE_INFO = {
   emi: 'Pay in easy instalments on orders of ₹3,000 or more. Available for select banks.',
   emiThreshold: 3000,
   returns: '7 days easy returns (conditions apply)',
-  returnsUrl: '/policies/refund-policy',
+  returnsUrl: '/pages/returns',
   soldBy: 'Landmark Online India Pvt Ltd',
 };
 /**
@@ -71,7 +71,7 @@ export const PDP_INFO_PANELS = {
       'Refunds go to your original payment method within 5–7 working days after pickup.',
     ],
     note: 'Not returnable: innerwear, swimwear, beauty and personal care, and items marked non-returnable.',
-    policy: '',
+    policy: '/pages/returns',
   },
   soldBy: {
     title: 'Sold by Landmark Online India Pvt Ltd',
@@ -90,7 +90,7 @@ export const PDP_INFO_PANELS = {
       'You will get tracking details by SMS and email once the order ships.',
     ],
     note: '',
-    policy: '',
+    policy: '/pages/shipping',
   },
   rewards: {
     title: 'Landmark Rewards',
@@ -187,7 +187,8 @@ export const STORE_LINKS = {
 const LABEL_LINKS = [
   [/download.*app|our apps/i, STORE_LINKS.apps],
   [/store locator/i, STORE_LINKS.storeLocator],
-  [/^help|help ?cent|feedback|contact/i, STORE_LINKS.help],
+  [/feedback|contact/i, '/pages/contact'],
+  [/^help|help ?cent/i, STORE_LINKS.help],
   [/gift ?card/i, STORE_LINKS.giftCard],
   [/legal|policies|terms/i, '/policies'],
 ];

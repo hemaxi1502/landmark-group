@@ -127,18 +127,29 @@ export const HOME_NODES_QUERY = `#graphql
     }
   }
 `;
-/** Turns an absolute store URL into a relative path so links stay inside Hydrogen. */
+/**
+ * Turns an absolute store URL into a relative path so links stay inside
+ * Hydrogen. lifestylestores.com links copied from the live site are mapped
+ * when there's an equivalent here (home, /department/x and /c/x → collection);
+ * other pages on that site (store locator, Edge, help centre…) stay external.
+ */
 export function toRelativeUrl(url) {
   if (!url) return undefined;
   if (url.startsWith('/')) return url;
-  if (url === '#') return undefined;
+  if (url.trim().endsWith('#')) return undefined; // placeholder links
   try {
     const parsed = new URL(url);
-    if (
-      parsed.hostname.endsWith('myshopify.com') ||
-      parsed.hostname.endsWith('lifestylestores.com')
-    ) {
+    if (parsed.hostname.endsWith('myshopify.com')) {
       return `${parsed.pathname}${parsed.search}`;
+    }
+    if (/(^|\.)lifestylestores\.com$/.test(parsed.hostname) && !parsed.hostname.startsWith('help')) {
+      const path = parsed.pathname.replace(/^\/in\/en(?=\/|$)/, '') || '/';
+      if (path === '/') return '/';
+      if (path === '/search') return `/search${parsed.search}`;
+      const match = path.match(/^\/(?:department|c)\/([a-z0-9-]+)\/?$/i);
+      if (match && !/giftcard/i.test(match[1])) {
+        return `/collections/${match[1].toLowerCase()}`;
+      }
     }
     return url;
   } catch {

@@ -63,7 +63,7 @@ function FooterContent({data, publicStoreDomain, primaryDomainUrl}) {
   const legalLinks = bySort(copyright?.links?.references?.nodes).map((l) => ({
     id: l.id,
     text: l.text?.value,
-    policy: legalPolicy(l.handle, data.shop),
+    href: legalHref(l.handle, data.shop),
   }));
 
   return (
@@ -134,11 +134,8 @@ function FooterContent({data, publicStoreDomain, primaryDomainUrl}) {
               {legalLinks.map((l, i) => (
                 <span key={l.id}>
                   {i > 0 && ' - '}
-                  {l.policy ? (
-                    <Link
-                      to={`/policies/${l.policy.handle}`}
-                      className="hover:text-ink"
-                    >
+                  {l.href ? (
+                    <Link to={l.href} className="hover:text-ink">
                       {l.text}
                     </Link>
                   ) : (
@@ -256,7 +253,16 @@ function FooterColumn({column, toUrl}) {
           const cls = 'block py-[7px] text-[14px] text-[#6B6B6B]';
           return (
             <li key={item.id}>
-              {url ? (
+              {url && /^https?:\/\//.test(url) ? (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${cls} hover:text-ink`}
+                >
+                  {item.title}
+                </a>
+              ) : url ? (
                 <Link
                   to={url}
                   prefetch="intent"
@@ -383,12 +389,19 @@ function SocialIcon({name}) {
   return Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null;
 }
 
-/** "terms-conditions" / "privacy-policy" entries → the matching shop policy, if it exists. */
-function legalPolicy(handle = '', shop) {
-  if (/terms/.test(handle)) return shop.termsOfService;
-  if (/privacy/.test(handle)) return shop.privacyPolicy;
-  if (/refund|return/.test(handle)) return shop.refundPolicy;
-  if (/shipping/.test(handle)) return shop.shippingPolicy;
+/**
+ * "terms-conditions" / "privacy-policy" entries → the shop policy when it is
+ * set in Settings → Policies, else the matching Shopify page.
+ */
+function legalHref(handle = '', shop) {
+  const pick = (policy, page) => (policy ? `/policies/${policy.handle}` : page);
+  if (/terms/.test(handle))
+    return pick(shop.termsOfService, '/pages/terms-and-conditions');
+  if (/privacy/.test(handle)) return pick(shop.privacyPolicy, null);
+  if (/refund|return/.test(handle))
+    return pick(shop.refundPolicy, '/pages/returns');
+  if (/shipping/.test(handle))
+    return pick(shop.shippingPolicy, '/pages/shipping');
   return null;
 }
 

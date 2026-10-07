@@ -17,7 +17,8 @@ export function SubCategoryPills({links}) {
       </span>
       {links.map((l) => (
         <Link
-          key={l.to}
+          // Two menu items can point to the same collection.
+          key={`${l.to}-${l.label}`}
           to={l.to}
           prefetch="intent"
           aria-current={l.active ? 'page' : undefined}

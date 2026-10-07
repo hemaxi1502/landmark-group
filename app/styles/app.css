@@ -729,3 +729,56 @@ button.reset:hover:not(:has(> *)) {
   height: 24px;
   background-position: -446px -377px;
 }
+
+/*
+* --------------------------------------------------
+* Rich text from Shopify admin (pages, policies)
+* --------------------------------------------------
+*/
+.rte {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #292d35;
+}
+.rte > * + * {
+  margin-top: 0.9em;
+}
+.rte h2 {
+  margin-top: 1.8em;
+  font-size: 18px;
+  font-weight: 700;
+  color: #000;
+  scroll-margin-top: 140px;
+}
+.rte h3 {
+  margin-top: 1.4em;
+  font-size: 15px;
+  font-weight: 700;
+  color: #000;
+}
+.rte h2:first-child,
+.rte h3:first-child {
+  margin-top: 0;
+}
+.rte ul,
+.rte ol {
+  padding-left: 1.25rem;
+}
+.rte ul {
+  list-style: disc;
+}
+.rte ol {
+  list-style: decimal;
+}
+.rte li + li {
+  margin-top: 0.35em;
+}
+.rte a {
+  color: #000;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rte a:hover {
+  color: #faa619;
+}
