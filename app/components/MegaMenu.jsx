@@ -42,6 +42,20 @@ export function menuPath(url, {primaryDomainUrl, publicStoreDomain} = {}) {
   return url;
 }
 
+/**
+ * Picture for a category's mega panel: the collection image set in admin
+ * (Products → Collections → image), else its best-selling product's photo.
+ * The tile image in the menu title is only 64px, too small to show here.
+ */
+function menuPicture(item) {
+  const res = item?.resource;
+  return res?.image ?? res?.products?.nodes?.[0]?.featuredImage ?? null;
+}
+
+function withWidth(url, width) {
+  return `${url}${url.includes('?') ? '&' : '?'}width=${width}`;
+}
+
 const OPEN_DELAY = 120;
 const CLOSE_DELAY = 180;
 
@@ -149,6 +163,7 @@ export function DesktopMegaMenu({
 
 function MegaPanel({item, opts, onMouseEnter, onNavigate}) {
   const {title} = parseMenuTitle(item.title);
+  const picture = menuPicture(item);
   const allPath = menuPath(item.url, opts);
   return (
     <div
@@ -209,8 +224,25 @@ function MegaPanel({item, opts, onMouseEnter, onNavigate}) {
           })}
         </ul>
 
-        {allPath && (
-          <div className="hidden w-44 shrink-0 lg:block">
+        {(picture || allPath) && (
+          <div className="hidden w-48 shrink-0 lg:block">
+            {picture && (
+              <NavLink
+                to={allPath ?? '#'}
+                prefetch="intent"
+                onClick={onNavigate}
+                className="block overflow-hidden rounded bg-[#ECEDEB]"
+              >
+                <img
+                  src={withWidth(picture.url, 400)}
+                  srcSet={`${withWidth(picture.url, 200)} 200w, ${withWidth(picture.url, 400)} 400w`}
+                  sizes="192px"
+                  alt={picture.altText || title}
+                  loading="lazy"
+                  className="aspect-[3/4] w-full rounded-none object-cover transition duration-300 hover:scale-105"
+                />
+              </NavLink>
+            )}
             {allPath && (
               <NavLink
                 to={allPath}

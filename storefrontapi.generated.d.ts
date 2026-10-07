@@ -1310,6 +1310,18 @@ export type ParentMenuItemFragment = Pick<
   StorefrontAPI.MenuItem,
   'id' | 'resourceId' | 'tags' | 'title' | 'type' | 'url'
 > & {
+  resource?: StorefrontAPI.Maybe<{
+    image?: StorefrontAPI.Maybe<
+      Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+    >;
+    products: {
+      nodes: Array<{
+        featuredImage?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+        >;
+      }>;
+    };
+  }>;
   items: Array<
     Pick<
       StorefrontAPI.MenuItem,
@@ -1331,6 +1343,18 @@ export type MenuFragment = Pick<StorefrontAPI.Menu, 'id'> & {
       StorefrontAPI.MenuItem,
       'id' | 'resourceId' | 'tags' | 'title' | 'type' | 'url'
     > & {
+      resource?: StorefrontAPI.Maybe<{
+        image?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+        >;
+        products: {
+          nodes: Array<{
+            featuredImage?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+            >;
+          }>;
+        };
+      }>;
       items: Array<
         Pick<
           StorefrontAPI.MenuItem,
@@ -1402,6 +1426,21 @@ export type HeaderQuery = {
           StorefrontAPI.MenuItem,
           'id' | 'resourceId' | 'tags' | 'title' | 'type' | 'url'
         > & {
+          resource?: StorefrontAPI.Maybe<{
+            image?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+            >;
+            products: {
+              nodes: Array<{
+                featuredImage?: StorefrontAPI.Maybe<
+                  Pick<
+                    StorefrontAPI.Image,
+                    'url' | 'altText' | 'width' | 'height'
+                  >
+                >;
+              }>;
+            };
+          }>;
           items: Array<
             Pick<
               StorefrontAPI.MenuItem,
@@ -2799,7 +2838,7 @@ interface GeneratedQueryTypes {
     return: HomePageShowcaseSectionsQuery;
     variables: HomePageShowcaseSectionsQueryVariables;
   };
-  '#graphql\n  fragment Shop on Shop {\n    id\n    name\n    description\n    primaryDomain {\n      url\n    }\n    brand {\n      logo {\n        image {\n          url\n        }\n      }\n    }\n  }\n  fragment AnnouncementBarMetaobject on Metaobject {\n    id\n    handle\n    type\n    fields {\n      key\n      value\n      reference {\n        ... on MediaImage {\n          id\n          image {\n            url\n            altText\n          }\n        }\n        ... on Collection {\n          id\n          handle\n          title\n        }\n        ... on Product {\n          id\n          handle\n          title\n        }\n        ... on Page {\n          id\n          handle\n          title\n        }\n      }\n    }\n  }\n  query Header(\n    $country: CountryCode\n    $headerMenuHandle: String!\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    shop {\n      ...Shop\n    }\n    menu(handle: $headerMenuHandle) {\n      ...Menu\n    }\n    topBar: metaobject(handle: {type: "top_bar_link_main", handle: "top-bar-link-main"}) {\n      fields {\n        key\n        value\n        references(first: 10) {\n          nodes {\n            ... on Metaobject {\n              fields {\n                key\n                value\n                reference {\n                  ... on MediaImage {\n                    image {\n                      url\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    announcementBarMetaobject: metaobject(handle: {handle: "announcement-bar-1", type: "announcement_bar"}) {\n      ...AnnouncementBarMetaobject\n    }\n    announcementBarMetaobjects: metaobjects(type: "announcement_bar", first: 10) {\n      nodes {\n        ...AnnouncementBarMetaobject\n      }\n    }\n  }\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment GrandchildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...GrandchildMenuItem\n    }\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n': {
+  '#graphql\n  fragment Shop on Shop {\n    id\n    name\n    description\n    primaryDomain {\n      url\n    }\n    brand {\n      logo {\n        image {\n          url\n        }\n      }\n    }\n  }\n  fragment AnnouncementBarMetaobject on Metaobject {\n    id\n    handle\n    type\n    fields {\n      key\n      value\n      reference {\n        ... on MediaImage {\n          id\n          image {\n            url\n            altText\n          }\n        }\n        ... on Collection {\n          id\n          handle\n          title\n        }\n        ... on Product {\n          id\n          handle\n          title\n        }\n        ... on Page {\n          id\n          handle\n          title\n        }\n      }\n    }\n  }\n  query Header(\n    $country: CountryCode\n    $headerMenuHandle: String!\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    shop {\n      ...Shop\n    }\n    menu(handle: $headerMenuHandle) {\n      ...Menu\n    }\n    topBar: metaobject(handle: {type: "top_bar_link_main", handle: "top-bar-link-main"}) {\n      fields {\n        key\n        value\n        references(first: 10) {\n          nodes {\n            ... on Metaobject {\n              fields {\n                key\n                value\n                reference {\n                  ... on MediaImage {\n                    image {\n                      url\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    announcementBarMetaobject: metaobject(handle: {handle: "announcement-bar-1", type: "announcement_bar"}) {\n      ...AnnouncementBarMetaobject\n    }\n    announcementBarMetaobjects: metaobjects(type: "announcement_bar", first: 10) {\n      nodes {\n        ...AnnouncementBarMetaobject\n      }\n    }\n  }\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment GrandchildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...GrandchildMenuItem\n    }\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    # Mega menu picture: the collection\'s own image, else its best seller.\n    resource {\n      ... on Collection {\n        image {\n          url\n          altText\n          width\n          height\n        }\n        products(first: 1, sortKey: BEST_SELLING) {\n          nodes {\n            featuredImage {\n              url\n              altText\n              width\n              height\n            }\n          }\n        }\n      }\n    }\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n': {
     return: HeaderQuery;
     variables: HeaderQueryVariables;
   };
