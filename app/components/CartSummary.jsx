@@ -36,6 +36,16 @@ export function CartSummary({cart, layout}) {
   const totalSavings = mrpDiscount + Math.max(0, couponSavings);
   const compact = layout === 'aside';
 
+  if (compact) {
+    return (
+      <AsideSummary
+        cart={cart}
+        rows={{mrpTotal, mrpDiscount, couponSavings, totalSavings}}
+        money={money}
+      />
+    );
+  }
+
   return (
     <div
       aria-labelledby="cart-summary"
@@ -122,6 +132,144 @@ export function CartSummary({cart, layout}) {
   );
 }
 
+/**
+ * Drawer version: three slim rows (coupon · total · buttons) so the item list
+ * gets most of the height. The price breakdown opens from the Total row.
+ */
+function AsideSummary({cart, rows, money}) {
+  const [showDetails, setShowDetails] = useState(false);
+  const {mrpTotal, mrpDiscount, couponSavings, totalSavings} = rows;
+  const count = cart?.totalQuantity ?? 0;
+  return (
+    <div aria-labelledby="cart-summary" className="space-y-2">
+      <CartCoupons discountCodes={cart?.discountCodes} compact />
+
+      <section className="rounded border border-line">
+        <button
+          type="button"
+          onClick={() => setShowDetails((o) => !o)}
+          aria-expanded={showDetails}
+          aria-controls="cart-summary-details"
+          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
+        >
+          <span>
+            <span id="cart-summary" className="block text-sm font-bold">
+              Total{' '}
+              {cart?.cost?.totalAmount ? (
+                <Money
+                  as="span"
+                  data={cart.cost.totalAmount}
+                  withoutTrailingZeros
+                />
+              ) : (
+                '-'
+              )}
+            </span>
+            <span className="block text-[11px] text-muted">
+              {count} {count === 1 ? 'item' : 'items'} · Free delivery · Incl.
+              taxes
+              {totalSavings > 0 && (
+                <span className="font-semibold text-success">
+                  {' '}
+                  · Save{' '}
+                  <Money
+                    as="span"
+                    data={money(totalSavings)}
+                    withoutTrailingZeros
+                  />
+                </span>
+              )}
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-muted">
+            Details
+            <Icon
+              name="chevronDown"
+              className={`h-3.5 w-3.5 transition ${showDetails ? 'rotate-180' : ''}`}
+            />
+          </span>
+        </button>
+        {showDetails && (
+          <dl
+            id="cart-summary-details"
+            className="space-y-1.5 border-t border-line px-3 py-2 text-xs"
+          >
+            <Row
+              label="Total MRP"
+              value={
+                <Money as="span" data={money(mrpTotal)} withoutTrailingZeros />
+              }
+            />
+            {mrpDiscount > 0 && (
+              <Row
+                label="Discount on MRP"
+                value={
+                  <span className="text-success">
+                    −{' '}
+                    <Money
+                      as="span"
+                      data={money(mrpDiscount)}
+                      withoutTrailingZeros
+                    />
+                  </span>
+                }
+              />
+            )}
+            {couponSavings > 0.5 && (
+              <Row
+                label="Coupon savings"
+                value={
+                  <span className="text-success">
+                    −{' '}
+                    <Money
+                      as="span"
+                      data={money(couponSavings)}
+                      withoutTrailingZeros
+                    />
+                  </span>
+                }
+              />
+            )}
+            <Row
+              label="Delivery"
+              value={<span className="text-success">FREE</span>}
+            />
+          </dl>
+        )}
+      </section>
+
+      {cart?.checkoutUrl && (
+        <div className="grid grid-cols-[2fr_3fr] gap-2">
+          <Link
+            to="/cart"
+            className="flex h-11 items-center justify-center rounded border border-ink text-sm font-semibold hover:bg-surface"
+          >
+            View Basket
+          </Link>
+          <a
+            href={cart.checkoutUrl}
+            target="_self"
+            className="flex h-11 items-center justify-center gap-1.5 rounded bg-ink text-sm font-bold uppercase tracking-wide text-white hover:bg-black"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+            Checkout
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Row({label, value}) {
   return (
     <div className="flex justify-between">
@@ -185,15 +333,22 @@ function CartCoupons({discountCodes, compact}) {
     discountCodes?.filter((d) => !d.applicable).map((d) => d.code) ?? [];
 
   return (
-    <section className="rounded border border-line p-4">
+    <section
+      className={`rounded border border-line ${compact ? 'px-3 py-2' : 'p-4'}`}
+    >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between text-sm font-semibold"
+        className={`flex w-full items-center justify-between font-semibold ${compact ? 'text-xs' : 'text-sm'}`}
       >
         <span className="flex items-center gap-2">
-          <Icon name="tag" className="h-4 w-4 text-brand" /> Apply coupon
+          <Icon name="tag" className="h-4 w-4 text-brand" />
+          {compact && applied.length > 0 ? (
+            <span className="text-success">{applied.join(', ')} applied</span>
+          ) : (
+            'Apply coupon'
+          )}
         </span>
         <Icon
           name="chevronDown"
@@ -201,8 +356,8 @@ function CartCoupons({discountCodes, compact}) {
         />
       </button>
 
-      {applied.length > 0 && (
-        <ul className="mt-3 space-y-2">
+      {applied.length > 0 && (!compact || open) && (
+        <ul className={`${compact ? 'mt-2' : 'mt-3'} space-y-2`}>
           {applied.map((code) => (
             <li
               key={code}

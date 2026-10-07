@@ -68,11 +68,11 @@ export function CartMain({layout, cart: originalCart}) {
         aria-label="Basket drawer"
         className="flex h-full min-h-0 flex-col"
       >
-        <FreeShippingNote />
+        <FreeShippingNote compact />
         <div className="min-h-[120px] flex-1 overflow-y-auto overscroll-contain px-1">
           {lineList}
         </div>
-        <div className="max-h-[65%] shrink-0 overflow-y-auto border-t border-line bg-white pt-3">
+        <div className="max-h-[60%] shrink-0 overflow-y-auto border-t border-line bg-white pt-2">
           <CartSummary cart={cart} layout="aside" />
         </div>
       </section>
@@ -101,12 +101,15 @@ export function CartMain({layout, cart: originalCart}) {
   );
 }
 
-function FreeShippingNote() {
+function FreeShippingNote({compact = false}) {
   return (
-    <p className="mb-3 flex items-center gap-2 rounded bg-surface px-3 py-2 text-xs">
+    <p
+      className={`flex items-center gap-2 rounded bg-surface px-3 text-xs ${compact ? 'mb-1 py-1.5' : 'mb-3 py-2'}`}
+    >
       <Icon name="truck" className="h-4 w-4 shrink-0 text-brand" />
-      <span>
-        <strong>Free shipping</strong> on this order · Easy 7-day returns
+      <span className={compact ? 'truncate' : undefined}>
+        <strong>Free shipping</strong>
+        {compact ? '' : ' on this order'} · Easy 7-day returns
       </span>
     </p>
   );

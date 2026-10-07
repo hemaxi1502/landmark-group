@@ -32,13 +32,15 @@ export function CartLineItem({layout, line, childrenMap}) {
   const compact = layout === 'aside';
 
   return (
-    <li className="border-b border-line py-4 last:border-b-0">
+    <li
+      className={`border-b border-line last:border-b-0 ${compact ? 'py-2' : 'py-4'}`}
+    >
       <div className="flex gap-3 md:gap-4">
         <Link
           to={lineItemUrl}
           prefetch="intent"
           onClick={() => layout === 'aside' && close()}
-          className={`shrink-0 overflow-hidden rounded bg-surface ${compact ? 'h-28 w-21' : 'h-36 w-27 md:h-44 md:w-33'}`}
+          className={`shrink-0 overflow-hidden rounded bg-surface ${compact ? 'h-20 w-15' : 'h-36 w-27 md:h-44 md:w-33'}`}
         >
           {image && (
             <Image
@@ -61,18 +63,27 @@ export function CartLineItem({layout, line, childrenMap}) {
             to={lineItemUrl}
             prefetch="intent"
             onClick={() => layout === 'aside' && close()}
-            className="line-clamp-2 text-sm text-muted hover:text-ink"
+            className={`text-muted hover:text-ink ${compact ? 'truncate text-xs' : 'line-clamp-2 text-sm'}`}
           >
             {product.title}
           </Link>
 
-          {options.length > 0 && (
+          {options.length > 0 && !compact && (
             <p className="mt-1 text-xs text-muted">
               {options.map((o) => `${o.name}: ${o.value}`).join(' · ')}
             </p>
           )}
 
-          <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-sm">
+          <div
+            className={`flex flex-wrap items-baseline gap-x-2 text-sm ${compact ? 'mt-0.5' : 'mt-1.5'}`}
+          >
+            {/* Drawer: size sits on the price line to save a row. */}
+            {compact && options.length > 0 && (
+              <span className="text-xs text-muted">
+                {options.map((o) => `${o.name}: ${o.value}`).join(' · ')}
+                <span aria-hidden="true"> ·</span>
+              </span>
+            )}
             {unit && (
               <span className="font-semibold">
                 <Money as="span" data={unit} withoutTrailingZeros />
@@ -90,8 +101,10 @@ export function CartLineItem({layout, line, childrenMap}) {
             )}
           </div>
 
-          <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-3">
-            <CartLineQuantity line={line} />
+          <div
+            className={`mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 ${compact ? 'pt-1' : 'pt-3'}`}
+          >
+            <CartLineQuantity line={line} compact={compact} />
             <CartLineRemoveButton lineIds={[id]} disabled={!!isOptimistic} />
             {!compact && (
               <CartForm
@@ -152,7 +165,7 @@ export function CartLineItem({layout, line, childrenMap}) {
  * Quantity stepper. Buttons are disabled while an optimistic update is pending.
  * @param {{line: CartLine}}
  */
-function CartLineQuantity({line}) {
+function CartLineQuantity({line, compact}) {
   if (!line || typeof line?.quantity === 'undefined') return null;
   const {id: lineId, quantity, isOptimistic} = line;
   const prevQuantity = Number(Math.max(0, quantity - 1).toFixed(0));
@@ -166,7 +179,7 @@ function CartLineQuantity({line}) {
           disabled={quantity <= 1 || !!isOptimistic}
           name="decrease-quantity"
           value={prevQuantity}
-          className="flex h-8 w-8 items-center justify-center disabled:opacity-30"
+          className={`flex items-center justify-center disabled:opacity-30 ${compact ? 'h-7 w-7' : 'h-8 w-8'}`}
         >
           <Icon name="minus" className="h-3.5 w-3.5" />
         </button>
@@ -180,7 +193,7 @@ function CartLineQuantity({line}) {
           name="increase-quantity"
           value={nextQuantity}
           disabled={!!isOptimistic}
-          className="flex h-8 w-8 items-center justify-center disabled:opacity-30"
+          className={`flex items-center justify-center disabled:opacity-30 ${compact ? 'h-7 w-7' : 'h-8 w-8'}`}
         >
           <Icon name="plus" className="h-3.5 w-3.5" />
         </button>
